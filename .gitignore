@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+.DS_Store
+*.log
+
+# 后端构建产物
+backend/**/target/
+backend/**/*.class
+
+main-files
+DESIGN.MD
