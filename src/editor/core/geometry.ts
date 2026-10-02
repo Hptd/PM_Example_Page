@@ -34,14 +34,6 @@ export function clampZoom(zoom: number): number {
   return Math.min(4, Math.max(0.1, zoom))
 }
 
-export function rectsIntersect(a: Rect, b: Rect): boolean {
-  return !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y)
-}
-
-export function pointInRect(point: Point, rect: Rect): boolean {
-  return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h
-}
-
 export interface SnapResult {
   x: number
   y: number

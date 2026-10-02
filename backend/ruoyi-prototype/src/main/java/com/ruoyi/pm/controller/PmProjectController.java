@@ -33,6 +33,10 @@ public class PmProjectController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(PmProject query)
     {
+        if (!getLoginUser().getUser().isAdmin())
+        {
+            query.setOwnerId(getUserId());
+        }
         startPage();
         List<PmProject> list = pmProjectService.selectPmProjectList(query);
         return getDataTable(list);
@@ -42,7 +46,16 @@ public class PmProjectController extends BaseController
     @GetMapping("/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
-        return AjaxResult.success(pmProjectService.selectPmProjectById(id));
+        PmProject project = pmProjectService.selectPmProjectById(id);
+        if (project == null)
+        {
+            return AjaxResult.error("项目不存在");
+        }
+        if (!canAccess(project))
+        {
+            return AjaxResult.error("无权访问该项目");
+        }
+        return AjaxResult.success(project);
     }
 
     @PreAuthorize("@ss.hasPermi('pm:project:add')")
@@ -60,6 +73,16 @@ public class PmProjectController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody PmProject project)
     {
+        PmProject existing = project.getId() == null ? null : pmProjectService.selectPmProjectById(project.getId());
+        if (existing == null)
+        {
+            return AjaxResult.error("项目不存在");
+        }
+        if (!canAccess(existing))
+        {
+            return AjaxResult.error("无权修改该项目");
+        }
+        project.setOwnerId(existing.getOwnerId());
         project.setUpdateBy(getUsername());
         return toAjax(pmProjectService.updatePmProject(project));
     }
@@ -69,6 +92,20 @@ public class PmProjectController extends BaseController
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)
     {
+        for (Long id : ids)
+        {
+            PmProject existing = pmProjectService.selectPmProjectById(id);
+            if (existing != null && !canAccess(existing))
+            {
+                return AjaxResult.error("无权删除该项目");
+            }
+        }
         return toAjax(pmProjectService.deletePmProjectByIds(ids));
+    }
+
+    /** 管理员可访问全部，普通用户仅能访问本人项目 */
+    private boolean canAccess(PmProject project)
+    {
+        return getLoginUser().getUser().isAdmin() || getUserId().equals(project.getOwnerId());
     }
 }

@@ -1,4 +1,4 @@
-import { registry } from '../core/registry'
+import { registry } from '@/editor/core/registry'
 import { basicWidgets } from './basic'
 import { formWidgets } from './form'
 import { dataWidgets } from './data'

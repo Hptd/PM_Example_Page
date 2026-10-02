@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useEditorStore } from '../editor/core/store'
-import { registry } from '../editor/core/registry'
-import { createProject, parseProject, serializeProject, type Frame } from '../editor/core/schema'
-import { getProject, saveProject } from '../api/project'
-import PalettePanel from '../editor/panels/PalettePanel.vue'
-import PropertiesPanel from '../editor/panels/PropertiesPanel.vue'
-import LayersPanel from '../editor/panels/LayersPanel.vue'
-import CommentsPanel from '../editor/panels/CommentsPanel.vue'
-import CanvasView from '../editor/canvas/CanvasView.vue'
-import { exportFrame } from '../editor/export/exportFrame'
-import { buildSpec } from '../editor/export/spec'
-import { downloadText, safeFilename } from '../editor/export/download'
+import { useEditorStore } from '@/editor/core/store'
+import { registry } from '@/editor/core/registry'
+import { createProject, parseProject, serializeProject, type Frame } from '@/editor/core/schema'
+import { FRAME_SIZE_GROUPS, nextFramePosition, pickDefaultFrameSize } from '@/editor/core/framePresets'
+import { findCustomWidget } from '@/editor/core/customWidgets'
+import { findFrame } from '@/editor/core/tree'
+import { getProject, saveProject } from '@/api/project'
+import PalettePanel from '@/editor/panels/PalettePanel.vue'
+import PropertiesPanel from '@/editor/panels/PropertiesPanel.vue'
+import LayersPanel from '@/editor/panels/LayersPanel.vue'
+import CommentsPanel from '@/editor/panels/CommentsPanel.vue'
+import CanvasView from '@/editor/canvas/CanvasView.vue'
+import { exportFrame } from '@/editor/export/exportFrame'
+import { buildSpec } from '@/editor/export/spec'
+import { downloadText, safeFilename } from '@/editor/export/download'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,13 +28,40 @@ const saving = ref(false)
 const canvasRef = ref<InstanceType<typeof CanvasView> | null>(null)
 
 const contextMenu = reactive({ visible: false, x: 0, y: 0, frameId: '' })
+const newPageMenu = ref(false)
+
+const AUTO_SAVE_DELAY = 1200
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+
+function cancelAutoSave() {
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+    autoSaveTimer = null
+  }
+}
+
+watch(
+  () => store.dirty,
+  (dirty) => {
+    if (!dirty) return
+    cancelAutoSave()
+    autoSaveTimer = setTimeout(() => {
+      autoSaveTimer = null
+      void save()
+    }, AUTO_SAVE_DELAY)
+  }
+)
+
+const defaultFrameSize = computed(() => pickDefaultFrameSize(store.project.frames))
 
 onMounted(async () => {
   try {
     const record = await getProject(projectId)
     store.loadProject(record.content ? parseProject(record.content) : createProject(record.name), projectId)
-  } catch {
-    store.loadProject(createProject('未命名项目'), projectId)
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : '项目加载失败')
+    await router.replace('/')
+    return
   }
   loading.value = false
   window.addEventListener('keydown', onKeydown)
@@ -41,9 +71,14 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
   window.removeEventListener('click', closeMenu)
+  if (autoSaveTimer) {
+    cancelAutoSave()
+    void save()
+  }
 })
 
 async function save() {
+  cancelAutoSave()
   saving.value = true
   try {
     await saveProject({ id: projectId, name: store.project.name, content: serializeProject(store.project) })
@@ -63,26 +98,35 @@ function renameProject(event: Event) {
   if (value) store.renameProject(value)
 }
 
-function addFrame() {
+function addFrame(size: { w: number; h: number } = defaultFrameSize.value) {
   store.mutate(() => {
-    const count = store.project.frames.length
-    store.addFrame(60 + count * 40, 60 + count * 40)
+    const position = nextFramePosition(store.project.frames)
+    store.addFrame(position.x, position.y, size)
   })
+  newPageMenu.value = false
+}
+
+function duplicateFrame(id: string) {
+  store.mutate(() => store.duplicateFrame(id))
 }
 
 function addWidgetAtCenter(type: string) {
-  if (!store.activeFrameId) store.mutate(() => store.addFrame(60, 60))
+  if (!store.activeFrameId) addFrame()
   const frame = store.activeFrame
   if (!frame) return
+  if (type.startsWith('custom:')) {
+    const customId = type.slice('custom:'.length)
+    const widget = findCustomWidget(customId)
+    const w = widget?.w ?? 120
+    const x = Math.max(0, Math.round(frame.w / 2 - w / 2))
+    store.mutate(() => store.addCustom(customId, frame.id, x, 40))
+    return
+  }
   const def = registry.get(type)
   if (!def) return
   const x = Math.max(0, Math.round(frame.w / 2 - def.defaultSize.w / 2))
   const y = 40
   store.mutate(() => store.addWidget(type, frame.id, x, y))
-}
-
-function findFrame(id: string): Frame | undefined {
-  return store.project.frames.find((frame) => frame.id === id)
 }
 
 function onFrameMenu(payload: { frameId: string; x: number; y: number }) {
@@ -95,16 +139,17 @@ function onFrameMenu(payload: { frameId: string; x: number; y: number }) {
 
 function closeMenu() {
   contextMenu.visible = false
+  newPageMenu.value = false
 }
 
-async function exportAnnotated(frame?: Frame) {
+async function exportAnnotated(frame?: Frame | null) {
   const target = frame ?? store.activeFrame
   if (!target) return
   const result = await exportFrame(target, store.project)
   downloadText(`${safeFilename(target.name)}-annotated.html`, result.annotatedHtml, 'text/html')
 }
 
-async function exportClean(frame?: Frame) {
+async function exportClean(frame?: Frame | null) {
   const target = frame ?? store.activeFrame
   if (!target) return
   const result = await exportFrame(target, store.project)
@@ -116,7 +161,7 @@ function exportSpec() {
 }
 
 function renameFrame(id: string) {
-  const frame = findFrame(id)
+  const frame = findFrame(store.project.frames, id)
   if (!frame) return
   const name = window.prompt('页面名称', frame.name)
   if (name && name.trim()) store.mutate(() => store.updateFrame(id, { name: name.trim() }))
@@ -189,7 +234,27 @@ function onKeydown(event: KeyboardEvent) {
       </div>
 
       <div class="editor-topbar__group">
-        <button class="btn-ghost" @click="addFrame">新建页面</button>
+        <div class="new-page-menu">
+          <button class="btn-ghost" @click.stop="newPageMenu = !newPageMenu">新建页面 ▾</button>
+          <div v-if="newPageMenu" class="new-page-menu__dropdown" @click.stop>
+            <button class="new-page-menu__item is-default" @click="addFrame()">
+              <span>默认尺寸</span>
+              <em>{{ defaultFrameSize.w }} × {{ defaultFrameSize.h }}</em>
+            </button>
+            <template v-for="group in FRAME_SIZE_GROUPS" :key="group.label">
+              <div class="new-page-menu__group">{{ group.label }}</div>
+              <button
+                v-for="preset in group.presets"
+                :key="`${preset.label}-${preset.w}`"
+                class="new-page-menu__item"
+                @click="addFrame(preset)"
+              >
+                <span>{{ preset.label }}</span>
+                <em>{{ preset.w }} × {{ preset.h }}</em>
+              </button>
+            </template>
+          </div>
+        </div>
         <button class="btn-ghost" :disabled="!store.activeFrame" @click="exportClean()">导出 HTML</button>
         <button class="btn-ghost" :disabled="!store.activeFrame" @click="exportAnnotated()">导出注释 HTML</button>
         <button class="btn-ghost" @click="exportSpec">导出说明 MD</button>
@@ -224,8 +289,9 @@ function onKeydown(event: KeyboardEvent) {
       :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
       @click.stop
     >
-      <button @click="exportAnnotated(findFrame(contextMenu.frameId)); closeMenu()">导出注释 HTML</button>
-      <button @click="exportClean(findFrame(contextMenu.frameId)); closeMenu()">导出干净 HTML</button>
+      <button @click="duplicateFrame(contextMenu.frameId); closeMenu()">创建副本</button>
+      <button @click="exportAnnotated(findFrame(store.project.frames, contextMenu.frameId)); closeMenu()">导出注释 HTML</button>
+      <button @click="exportClean(findFrame(store.project.frames, contextMenu.frameId)); closeMenu()">导出干净 HTML</button>
       <button @click="renameFrame(contextMenu.frameId); closeMenu()">重命名页面</button>
       <button class="danger" @click="removeFrame(contextMenu.frameId); closeMenu()">删除页面</button>
     </div>

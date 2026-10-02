@@ -1,5 +1,6 @@
 import type { PMNode } from './schema'
 import type { Point } from './geometry'
+import { walkTree } from './tree'
 
 export function hitTest(nodes: PMNode[], point: Point): PMNode | null {
   for (let index = nodes.length - 1; index >= 0; index -= 1) {
@@ -25,12 +26,13 @@ export interface Anchor {
 
 export function collectAnchors(nodes: PMNode[], annotations: Record<string, unknown[]>, offsetX = 0, offsetY = 0): Anchor[] {
   const result: Anchor[] = []
-  for (const node of nodes) {
-    const count = annotations[node.id]?.length ?? 0
-    if (count) result.push({ nodeId: node.id, x: offsetX + node.x + node.w, y: offsetY + node.y, count })
-    if (node.children?.length) {
-      result.push(...collectAnchors(node.children, annotations, offsetX + node.x, offsetY + node.y))
-    }
-  }
+  walkTree(
+    nodes,
+    (node, context) => {
+      const count = annotations[node.id]?.length ?? 0
+      if (count) result.push({ nodeId: node.id, x: context.offsetX + node.x + node.w, y: context.offsetY + node.y, count })
+    },
+    { offsetX, offsetY }
+  )
   return result
 }

@@ -1,5 +1,5 @@
 import { h } from 'vue'
-import type { WidgetDef } from '../core/registry'
+import type { WidgetDef } from '@/editor/core/registry'
 import { baseStyle, box, str } from './helpers'
 import { renderIcon } from './icons'
 
@@ -20,6 +20,7 @@ export const formWidgets: WidgetDef[] = [
       fontSize: '14px',
       padding: '0 10px'
     },
+    textEditor: { key: 'value' },
     propSchema: [
       { key: 'placeholder', label: '占位提示', type: 'text' },
       { key: 'value', label: '默认值', type: 'text' }
@@ -48,6 +49,7 @@ export const formWidgets: WidgetDef[] = [
       fontSize: '14px',
       padding: '8px 10px'
     },
+    textEditor: { key: 'value', multiline: true },
     propSchema: [
       { key: 'placeholder', label: '占位提示', type: 'text' },
       { key: 'value', label: '默认值', type: 'textarea' }
@@ -105,6 +107,7 @@ export const formWidgets: WidgetDef[] = [
     defaultSize: { w: 120, h: 24 },
     defaultProps: { label: '选项', checked: false },
     defaultStyle: { color: '#334155', fontSize: '14px', background: 'transparent' },
+    textEditor: { key: 'label' },
     propSchema: [
       { key: 'label', label: '文字', type: 'text' },
       { key: 'checked', label: '选中', type: 'boolean' }
@@ -146,6 +149,7 @@ export const formWidgets: WidgetDef[] = [
     defaultSize: { w: 120, h: 24 },
     defaultProps: { label: '选项', checked: false },
     defaultStyle: { color: '#334155', fontSize: '14px', background: 'transparent' },
+    textEditor: { key: 'label' },
     propSchema: [
       { key: 'label', label: '文字', type: 'text' },
       { key: 'checked', label: '选中', type: 'boolean' }
@@ -229,6 +233,7 @@ export const formWidgets: WidgetDef[] = [
     defaultSize: { w: 200, h: 120 },
     defaultProps: { text: '点击或拖拽上传' },
     defaultStyle: { background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '6px' },
+    textEditor: { key: 'text' },
     propSchema: [{ key: 'text', label: '提示文字', type: 'text' }],
     render: (node) =>
       box(

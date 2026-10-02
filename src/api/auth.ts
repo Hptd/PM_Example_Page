@@ -1,6 +1,5 @@
-import { clearToken, getStoredUser, http, setStoredUser, setToken, USE_LOCAL } from './http'
+import { clearToken, http, setStoredUser, setToken, USE_LOCAL } from './http'
 import * as local from './local'
-import type { UserInfo } from './types'
 
 export async function login(username: string, password: string): Promise<void> {
   if (USE_LOCAL) {
@@ -29,12 +28,4 @@ export async function logout(): Promise<void> {
     }
   }
   clearToken()
-}
-
-export async function getInfo(): Promise<UserInfo> {
-  if (USE_LOCAL) {
-    const name = getStoredUser() || 'wangzhe'
-    return { userName: name, nickName: name, roles: ['pm_user'], permissions: [] }
-  }
-  return http<UserInfo>({ url: '/getInfo' })
 }

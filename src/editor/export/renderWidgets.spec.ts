@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { renderToString } from 'vue/server-renderer'
-import { registry } from '../core/registry'
-import { renderNode } from '../render/renderNode'
-import type { PMNode } from '../core/schema'
-import '../widgets'
+import { registry } from '@/editor/core/registry'
+import { renderNode } from '@/editor/render/renderNode'
+import type { PMNode } from '@/editor/core/schema'
+import '@/editor/widgets'
 
 describe('widget rendering', () => {
   it('renders every registered widget to html without throwing', async () => {

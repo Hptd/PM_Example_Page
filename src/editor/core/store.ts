@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import '../widgets'
+import '@/editor/widgets'
 import { registry } from './registry'
 import {
   createFrame,
@@ -13,6 +13,8 @@ import {
   type Viewport
 } from './schema'
 import { cloneNode, findFrame, findNode, removeFromTree } from './tree'
+import { nextFramePosition } from './framePresets'
+import { buildCustomNode, findCustomWidget } from './customWidgets'
 
 const HISTORY_LIMIT = 100
 
@@ -126,13 +128,32 @@ export const useEditorStore = defineStore('editor', {
       this.project.name = name
     },
 
-    addFrame(x = 40, y = 40): ID {
-      const frame = createFrame({ x, y })
+    addFrame(x = 40, y = 40, size: { w: number; h: number } = { w: 1280, h: 800 }): ID {
+      const frame = createFrame({ x, y, w: size.w, h: size.h })
       this.project.frames.push(frame)
       this.activeFrameId = frame.id
       this.selectedId = null
       this.dirty = true
       return frame.id
+    },
+
+    duplicateFrame(id: ID): ID | null {
+      const source = findFrame(this.project.frames, id)
+      if (!source) return null
+      const position = nextFramePosition(this.project.frames)
+      const copy: Frame = {
+        ...source,
+        id: createId('f'),
+        name: `${source.name} 副本`,
+        x: position.x,
+        y: position.y,
+        tree: source.tree.map((node) => cloneNode(node, createId))
+      }
+      this.project.frames.push(copy)
+      this.activeFrameId = copy.id
+      this.selectedId = null
+      this.dirty = true
+      return copy.id
     },
 
     removeFrame(id: ID) {
@@ -171,6 +192,16 @@ export const useEditorStore = defineStore('editor', {
       return node.id
     },
 
+    addCustom(customId: ID, frameId: ID, x: number, y: number, parentId: ID | null = null): ID | null {
+      const widget = findCustomWidget(customId)
+      if (!widget) return null
+      const id = createId('n')
+      this.addNode(frameId, buildCustomNode(widget, id, x, y), parentId)
+      this.select(id)
+      this.dirty = true
+      return id
+    },
+
     addNode(frameId: ID, node: PMNode, parentId: ID | null = null) {
       const frame = findFrame(this.project.frames, frameId)
       if (!frame) return
@@ -193,7 +224,9 @@ export const useEditorStore = defineStore('editor', {
     },
 
     removeSelected() {
-      if (this.selectedId) this.removeNode(this.selectedId)
+      const id = this.selectedId
+      if (!id) return
+      this.mutate(() => this.removeNode(id))
     },
 
     moveNode(id: ID, x: number, y: number) {

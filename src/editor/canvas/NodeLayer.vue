@@ -1,7 +1,7 @@
 <script lang="ts">
 import { defineComponent, type PropType } from 'vue'
-import type { PMNode } from '../core/schema'
-import { renderNode } from '../render/renderNode'
+import type { PMNode } from '@/editor/core/schema'
+import { renderNode } from '@/editor/render/renderNode'
 
 export default defineComponent({
   name: 'NodeLayer',

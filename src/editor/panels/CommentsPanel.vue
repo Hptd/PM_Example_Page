@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useEditorStore } from '../core/store'
-import { registry } from '../core/registry'
-import IconGlyph from '../components/IconGlyph.vue'
+import { useEditorStore } from '@/editor/core/store'
+import { displayName, registry } from '@/editor/core/registry'
+import IconGlyph from '@/editor/components/IconGlyph.vue'
 
 const store = useEditorStore()
 const draft = ref('')
 
 const node = computed(() => store.selectedNode)
-const nodeName = computed(() => {
-  const current = node.value
-  if (!current) return ''
-  return current.name || registry.get(current.type)?.name || current.type
-})
+const nodeName = computed(() => (node.value ? displayName(node.value) : ''))
 const comments = computed(() => (node.value ? store.project.annotations[node.value.id] ?? [] : []))
 
 function formatTime(value: number): string {

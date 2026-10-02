@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { iconNames } from '../widgets/icons'
+import { iconNames } from '@/editor/widgets/icons'
 import IconGlyph from './IconGlyph.vue'
 
 const props = defineProps<{

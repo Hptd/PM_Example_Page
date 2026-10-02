@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { getToken } from '../api/http'
+import { getToken } from '@/api/http'
 
 const routes: RouteRecordRaw[] = [
   {

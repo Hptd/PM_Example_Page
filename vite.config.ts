@@ -9,11 +9,22 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vue: ['vue', 'vue-router', 'pinia'],
+          iconify: ['@iconify-json/tabler', '@iconify-json/simple-icons']
+        }
+      }
+    }
+  },
   server: {
     port: 5174,
     proxy: {
       '/dev-api': {
-        target: 'http://localhost:8080',
+        //target: 'http://localhost:8080',
+        target: 'http://172.18.206.102:8080',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/dev-api/, '')
       }

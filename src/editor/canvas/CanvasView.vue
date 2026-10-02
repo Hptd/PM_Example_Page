@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useEditorStore } from '../core/store'
-import { clampZoom } from '../core/geometry'
+import { computed, onBeforeUnmount, ref } from 'vue'
+import { useEditorStore } from '@/editor/core/store'
+import { clampZoom } from '@/editor/core/geometry'
 import FrameView from './FrameView.vue'
 
 const emit = defineEmits<{ (e: 'frame-menu', payload: { frameId: string; x: number; y: number }): void }>()
@@ -87,6 +87,8 @@ function resetZoom() {
 }
 
 defineExpose({ zoomBy, resetZoom })
+
+onBeforeUnmount(onPanUp)
 </script>
 
 <template>

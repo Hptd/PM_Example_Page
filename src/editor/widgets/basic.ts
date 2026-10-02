@@ -1,5 +1,5 @@
 import { h } from 'vue'
-import type { WidgetDef } from '../core/registry'
+import type { WidgetDef } from '@/editor/core/registry'
 import { baseStyle, box, num, str } from './helpers'
 import { renderIcon } from './icons'
 
@@ -82,6 +82,7 @@ export const basicWidgets: WidgetDef[] = [
       textAlign: 'left',
       background: 'transparent'
     },
+    textEditor: { key: 'content', multiline: true },
     propSchema: [{ key: 'content', label: '内容', type: 'textarea' }],
     render: (node) =>
       box(node, str(node.props.content, ''), {
@@ -169,6 +170,7 @@ export const basicWidgets: WidgetDef[] = [
       fontSize: '14px',
       border: 'none'
     },
+    textEditor: { key: 'label' },
     propSchema: [{ key: 'label', label: '文字', type: 'text' }],
     render: (node) => box(node, str(node.props.label, '按钮'), { display: 'flex', alignItems: 'center', justifyContent: 'center' })
   },
@@ -184,5 +186,29 @@ export const basicWidgets: WidgetDef[] = [
     droppable: true,
     propSchema: [],
     render: (node, children) => h('div', { style: baseStyle(node, { position: 'relative' }) }, children)
+  },
+  {
+    type: 'pm-custom',
+    name: '自定义组件',
+    category: 'custom',
+    icon: 'tabler:box',
+    order: 0,
+    defaultSize: { w: 120, h: 120 },
+    defaultProps: { name: '', svg: '' },
+    defaultStyle: { background: 'transparent' },
+    propSchema: [{ key: 'name', label: '名称', type: 'text' }],
+    render: (node) => {
+      const svg = str(node.props.svg)
+      if (svg) {
+        return h('img', { src: svg, alt: str(node.props.name, ''), draggable: false, style: baseStyle(node, { objectFit: 'contain', display: 'block' }) })
+      }
+      return box(node, str(node.props.name, '自定义组件'), {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#94a3b8',
+        fontSize: '12px'
+      })
+    }
   }
 ]

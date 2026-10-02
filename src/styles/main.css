@@ -646,6 +646,181 @@ textarea.field__control {
   background: #f8fafc;
 }
 
+.palette-group__title--toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.palette-group__title--toggle:hover {
+  color: var(--pm-text);
+}
+
+.palette-caret {
+  font-size: 10px;
+  transition: transform 0.15s ease;
+}
+
+.palette-caret.is-collapsed {
+  transform: rotate(-90deg);
+}
+
+.palette-item--add {
+  justify-content: center;
+  font-size: 20px;
+  color: var(--pm-muted);
+  border-style: dashed;
+}
+
+.palette-item--custom {
+  position: relative;
+}
+
+.palette-item__thumb {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.palette-item__remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--pm-border);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--pm-danger);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.palette-item--custom:hover .palette-item__remove {
+  display: inline-flex;
+}
+
+.palette-hint {
+  margin: 8px 2px 0;
+  font-size: 12px;
+  color: var(--pm-muted);
+}
+
+/* ---------- 自定义组件弹窗 ---------- */
+.custom-dialog__mask {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.custom-dialog {
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+  padding: 16px;
+}
+
+.custom-dialog__title {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.custom-dialog__tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.custom-dialog__tabs button {
+  flex: 1;
+  height: 32px;
+  border: 1px solid var(--pm-border);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  color: var(--pm-muted);
+  cursor: pointer;
+}
+
+.custom-dialog__tabs button.active {
+  border-color: var(--pm-primary);
+  color: var(--pm-primary);
+  background: #eff6ff;
+}
+
+.custom-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.custom-dialog__preview {
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+  align-self: center;
+}
+
+.custom-dialog__code {
+  width: 100%;
+  height: 120px;
+  box-sizing: border-box;
+  border: 1px solid var(--pm-border);
+  border-radius: 6px;
+  padding: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  resize: vertical;
+  outline: none;
+}
+
+.custom-dialog__hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--pm-muted);
+}
+
+.custom-dialog__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.custom-dialog__field input {
+  flex: 1;
+  height: 32px;
+  border: 1px solid var(--pm-border);
+  border-radius: 6px;
+  padding: 0 8px;
+  outline: none;
+}
+
+.custom-dialog__error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--pm-danger);
+}
+
+.custom-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 /* ---------- 属性面板 ---------- */
 .prop-section {
   margin-bottom: 18px;
@@ -969,6 +1144,27 @@ textarea.field__control {
   pointer-events: none;
 }
 
+.pm-inline-editor {
+  position: absolute;
+  z-index: 30;
+  pointer-events: auto;
+}
+
+.pm-inline-editor input,
+.pm-inline-editor textarea {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--pm-primary);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 1px 3px;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
+}
+
 /* ---------- 右键菜单 ---------- */
 .context-menu {
   position: fixed;
@@ -999,4 +1195,62 @@ textarea.field__control {
 
 .context-menu button.danger {
   color: var(--pm-danger);
+}
+
+/* ---------- 新建页面尺寸菜单 ---------- */
+.new-page-menu {
+  position: relative;
+}
+
+.new-page-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 4000;
+  min-width: 240px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--pm-border);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.new-page-menu__group {
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pm-muted);
+}
+
+.new-page-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--pm-text);
+  cursor: pointer;
+}
+
+.new-page-menu__item:hover {
+  background: #f1f5f9;
+}
+
+.new-page-menu__item em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--pm-muted);
+}
+
+.new-page-menu__item.is-default {
+  font-weight: 600;
 }

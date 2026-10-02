@@ -1,5 +1,5 @@
 import { h } from 'vue'
-import type { WidgetDef } from '../core/registry'
+import type { WidgetDef } from '@/editor/core/registry'
 import { box, num, splitList, str } from './helpers'
 import { renderIcon } from './icons'
 
@@ -20,6 +20,7 @@ export const navWidgets: WidgetDef[] = [
     defaultSize: { w: 375, h: 48 },
     defaultProps: { title: '页面标题', items: '首页,发现,我的' },
     defaultStyle: { background: '#ffffff', color: '#0f172a', borderBottom: '1px solid #e2e8f0', fontSize: '15px' },
+    textEditor: { key: 'title' },
     propSchema: [
       { key: 'title', label: '标题', type: 'text' },
       { key: 'items', label: '菜单(逗号分隔)', type: 'text' }
@@ -49,6 +50,7 @@ export const navWidgets: WidgetDef[] = [
     defaultSize: { w: 160, h: 200 },
     defaultProps: { items: '仪表盘\n项目\n设置', active: '仪表盘' },
     defaultStyle: { background: '#ffffff', color: '#334155', border: '1px solid #e2e8f0', fontSize: '14px' },
+    textEditor: { key: 'items', multiline: true },
     propSchema: [
       { key: 'items', label: '菜单(每行一项)', type: 'textarea' },
       { key: 'active', label: '选中项', type: 'text' }
@@ -85,6 +87,7 @@ export const navWidgets: WidgetDef[] = [
     defaultSize: { w: 280, h: 38 },
     defaultProps: { tabs: '标签一,标签二,标签三', active: '标签一' },
     defaultStyle: { background: 'transparent' },
+    textEditor: { key: 'tabs' },
     propSchema: [
       { key: 'tabs', label: '标签(逗号分隔)', type: 'text' },
       { key: 'active', label: '选中标签', type: 'text' }
@@ -121,6 +124,7 @@ export const navWidgets: WidgetDef[] = [
     defaultSize: { w: 240, h: 96 },
     defaultProps: { title: '折叠面板', body: '面板内容区域', open: true },
     defaultStyle: { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', color: '#0f172a' },
+    textEditor: { key: 'title' },
     propSchema: [
       { key: 'title', label: '标题', type: 'text' },
       { key: 'body', label: '内容', type: 'textarea' },
@@ -166,6 +170,7 @@ export const navWidgets: WidgetDef[] = [
     defaultSize: { w: 280, h: 160 },
     defaultProps: { title: '弹窗标题', body: '这里是弹窗内容。' },
     defaultStyle: { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a' },
+    textEditor: { key: 'title' },
     propSchema: [
       { key: 'title', label: '标题', type: 'text' },
       { key: 'body', label: '内容', type: 'textarea' }
@@ -195,14 +200,95 @@ export const navWidgets: WidgetDef[] = [
       )
   },
   {
+    type: 'pm-modal-confirm',
+    name: '按钮弹窗',
+    category: 'nav',
+    icon: 'tabler:app-window',
+    order: 65,
+    defaultSize: { w: 300, h: 180 },
+    defaultProps: { title: '弹窗标题', body: '这里是弹窗内容。', cancelText: '取消', confirmText: '确认' },
+    defaultStyle: { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a' },
+    textEditor: { key: 'title' },
+    propSchema: [
+      { key: 'title', label: '标题', type: 'text' },
+      { key: 'body', label: '内容', type: 'textarea' },
+      { key: 'cancelText', label: '取消按钮', type: 'text' },
+      { key: 'confirmText', label: '确认按钮', type: 'text' }
+    ],
+    render: (node) =>
+      box(
+        node,
+        [
+          h(
+            'div',
+            {
+              style: {
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 12px',
+                fontWeight: 600,
+                fontSize: '14px',
+                borderBottom: '1px solid #f1f5f9'
+              }
+            },
+            [h('span', {}, str(node.props.title)), h('span', { style: { width: '16px', height: '16px', color: '#94a3b8' } }, [renderIcon('tabler:x')])]
+          ),
+          h('div', { style: { flex: '1', padding: '12px', fontSize: '13px', color: '#475569', lineHeight: '1.6' } }, str(node.props.body)),
+          h(
+            'div',
+            { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '10px 12px', borderTop: '1px solid #f1f5f9' } },
+            [
+              h(
+                'button',
+                {
+                  'data-pm-edit': 'cancelText',
+                  style: {
+                    pointerEvents: 'auto',
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#334155',
+                    fontSize: '13px',
+                    cursor: 'text'
+                  }
+                },
+                str(node.props.cancelText, '取消')
+              ),
+              h(
+                'button',
+                {
+                  'data-pm-edit': 'confirmText',
+                  style: {
+                    pointerEvents: 'auto',
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    fontSize: '13px',
+                    cursor: 'text'
+                  }
+                },
+                str(node.props.confirmText, '确认')
+              )
+            ]
+          )
+        ],
+        { display: 'flex', flexDirection: 'column', overflow: 'hidden' }
+      )
+  },
+  {
     type: 'pm-alert',
     name: '提示',
     category: 'nav',
     icon: 'tabler:alert-circle',
-    order: 65,
+    order: 66,
     defaultSize: { w: 260, h: 40 },
     defaultProps: { message: '这是一条提示信息', type: 'info' },
     defaultStyle: { borderRadius: '6px', fontSize: '13px' },
+    textEditor: { key: 'message' },
     propSchema: [
       { key: 'message', label: '内容', type: 'text' },
       {
@@ -242,10 +328,11 @@ export const navWidgets: WidgetDef[] = [
     name: '步骤条',
     category: 'nav',
     icon: 'tabler:step-into',
-    order: 66,
+    order: 67,
     defaultSize: { w: 300, h: 40 },
     defaultProps: { steps: '第一步,第二步,第三步', current: 1 },
     defaultStyle: { background: 'transparent', color: '#0f172a' },
+    textEditor: { key: 'steps' },
     propSchema: [
       { key: 'steps', label: '步骤(逗号分隔)', type: 'text' },
       { key: 'current', label: '当前步骤', type: 'number', min: 1, max: 10, step: 1 }

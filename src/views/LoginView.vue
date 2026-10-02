@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { login } from '../api/auth'
+import { login } from '@/api/auth'
 
 const router = useRouter()
 const route = useRoute()
+const isDev = import.meta.env.DEV
 
-const username = ref('wangzhe')
-const password = ref('123456')
+const username = ref(isDev ? 'wangzhe' : '')
+const password = ref(isDev ? '123456' : '')
 const error = ref('')
 const loading = ref(false)
 
@@ -48,7 +49,7 @@ async function submit() {
         {{ loading ? '登录中...' : '登 录' }}
       </button>
 
-      <p class="auth-hint">默认账号：wangzhe / 123456</p>
+      <p v-if="isDev" class="auth-hint">默认账号：wangzhe / 123456</p>
     </form>
   </div>
 </template>

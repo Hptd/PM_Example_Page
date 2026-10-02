@@ -1,7 +1,7 @@
 import { h, type VNode } from 'vue'
-import type { Frame, ID, PMNode } from '../core/schema'
-import { registry } from '../core/registry'
-import '../widgets'
+import type { ID, PMNode } from '@/editor/core/schema'
+import { registry } from '@/editor/core/registry'
+import '@/editor/widgets'
 
 export interface RenderOptions {
   commentCounts?: Record<ID, number>
@@ -32,8 +32,4 @@ export function renderNode(node: PMNode, options: RenderOptions = {}): VNode {
   const count = options.commentCounts?.[node.id]
   if (count) props['data-pm-comments'] = String(count)
   return h('div', props, [content])
-}
-
-export function renderFrameNodes(frame: Frame, options: RenderOptions = {}): VNode[] {
-  return frame.tree.map((node) => renderNode(node, options))
 }

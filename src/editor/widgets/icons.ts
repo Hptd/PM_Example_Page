@@ -1,6 +1,4 @@
-import { h, type VNode } from 'vue'
-import { icons as tablerSet } from '@iconify-json/tabler'
-import { icons as simpleSet } from '@iconify-json/simple-icons'
+import { h, ref, type VNode } from 'vue'
 
 interface IconSetData {
   width?: number
@@ -8,35 +6,69 @@ interface IconSetData {
   icons: Record<string, { body: string }>
 }
 
-const SETS: Record<string, IconSetData> = {
-  tabler: tablerSet,
-  'simple-icons': simpleSet
+export type IconPrefix = 'tabler' | 'simple-icons'
+
+const SETS: Partial<Record<IconPrefix, IconSetData>> = {}
+const NAME_CACHE = new Map<IconPrefix, string[]>()
+const LOADING = new Map<IconPrefix, Promise<void>>()
+
+const iconDataVersion = ref(0)
+
+function isIconPrefix(value: string): value is IconPrefix {
+  return value === 'tabler' || value === 'simple-icons'
 }
 
-const NAME_CACHE = new Map<string, string[]>()
+async function loadSet(prefix: IconPrefix): Promise<void> {
+  if (SETS[prefix]) return
+  const pending = LOADING.get(prefix)
+  if (pending) return pending
+  const task = (async () => {
+    const mod = prefix === 'tabler' ? await import('@iconify-json/tabler') : await import('@iconify-json/simple-icons')
+    SETS[prefix] = mod.icons as IconSetData
+    NAME_CACHE.delete(prefix)
+    iconDataVersion.value += 1
+  })().finally(() => LOADING.delete(prefix))
+  LOADING.set(prefix, task)
+  return task
+}
 
-export function iconNames(prefix: 'tabler' | 'simple-icons'): string[] {
+function ensureIconSet(prefix: IconPrefix): void {
+  void loadSet(prefix)
+}
+
+export async function loadAllIconSets(): Promise<void> {
+  await Promise.all((['tabler', 'simple-icons'] as IconPrefix[]).map((prefix) => loadSet(prefix)))
+}
+
+function resolveIconName(name: string): string {
+  return name.includes(':') ? name : `tabler:${name}`
+}
+
+export function iconNames(prefix: IconPrefix): string[] {
+  iconDataVersion.value
+  const set = SETS[prefix]
+  if (!set) {
+    ensureIconSet(prefix)
+    return []
+  }
   const cached = NAME_CACHE.get(prefix)
   if (cached) return cached
-  const names = Object.keys(SETS[prefix]!.icons).map((key) => `${prefix}:${key}`)
+  const names = Object.keys(set.icons).map((key) => `${prefix}:${key}`)
   NAME_CACHE.set(prefix, names)
   return names
 }
 
-export function resolveIconName(name: string): string {
-  return name.includes(':') ? name : `tabler:${name}`
-}
-
-export function iconExists(name: string): boolean {
-  const [prefix, key] = resolveIconName(name).split(':') as [string, string]
-  return Boolean(SETS[prefix]?.icons[key])
-}
-
 export function iconBody(name: string): { body: string; size: number } | null {
+  iconDataVersion.value
   const [prefix, key] = resolveIconName(name).split(':') as [string, string]
+  if (!isIconPrefix(prefix)) return null
   const set = SETS[prefix]
-  const data = set?.icons[key]
-  if (!set || !data) return null
+  if (!set) {
+    ensureIconSet(prefix)
+    return null
+  }
+  const data = set.icons[key]
+  if (!data) return null
   return { body: data.body, size: set.width ?? 24 }
 }
 

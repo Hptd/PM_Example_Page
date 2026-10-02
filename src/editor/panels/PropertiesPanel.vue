@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useEditorStore } from '../core/store'
-import { registry, type PropField as PropFieldDef } from '../core/registry'
-import PropField from '../components/PropField.vue'
+import { useEditorStore } from '@/editor/core/store'
+import { registry, type PropField as PropFieldDef } from '@/editor/core/registry'
+import PropField from '@/editor/components/PropField.vue'
 
 const store = useEditorStore()
 

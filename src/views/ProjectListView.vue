@@ -1,25 +1,30 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { deleteProject, listProjects, saveProject } from '../api/project'
-import { logout } from '../api/auth'
-import { getStoredUser } from '../api/http'
-import { createProject, serializeProject } from '../editor/core/schema'
-import type { ProjectRecord } from '../api/types'
-import IconGlyph from '../editor/components/IconGlyph.vue'
+import { deleteProject, listProjects, saveProject } from '@/api/project'
+import { logout } from '@/api/auth'
+import { getStoredUser } from '@/api/http'
+import { createProject, serializeProject } from '@/editor/core/schema'
+import type { ProjectRecord } from '@/api/types'
+import IconGlyph from '@/editor/components/IconGlyph.vue'
 
 const router = useRouter()
 const projects = ref<ProjectRecord[]>([])
 const keyword = ref('')
 const loading = ref(false)
+const error = ref('')
 const showDialog = ref(false)
 const newName = ref('')
 const userName = computed(() => getStoredUser() || 'wangzhe')
 
 async function refresh() {
   loading.value = true
+  error.value = ''
   try {
     projects.value = (await listProjects(keyword.value)).rows
+  } catch (err) {
+    projects.value = []
+    error.value = err instanceof Error ? err.message : '项目列表加载失败'
   } finally {
     loading.value = false
   }
@@ -76,9 +81,13 @@ function formatTime(value?: string): string {
     </div>
 
     <p v-if="loading" class="project-empty">加载中...</p>
+    <div v-else-if="error" class="project-empty">
+      <p>{{ error }}</p>
+      <button class="btn-ghost" @click="refresh">重试</button>
+    </div>
     <p v-else-if="!projects.length" class="project-empty">还没有项目，点击「新建项目」开始</p>
 
-    <div class="project-grid">
+    <div v-else class="project-grid">
       <article v-for="record in projects" :key="record.id" class="project-card" @click="open(record)">
         <div class="project-card__preview">
           <icon-glyph name="tabler:stack-2" size="34px" />

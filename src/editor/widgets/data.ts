@@ -1,5 +1,5 @@
 import { h } from 'vue'
-import type { WidgetDef } from '../core/registry'
+import type { WidgetDef } from '@/editor/core/registry'
 import { box, num, splitList, str } from './helpers'
 
 export const dataWidgets: WidgetDef[] = [
@@ -56,6 +56,7 @@ export const dataWidgets: WidgetDef[] = [
     defaultSize: { w: 220, h: 132 },
     defaultProps: { items: '列表项一\n列表项二\n列表项三' },
     defaultStyle: { background: '#ffffff', color: '#334155', fontSize: '13px', border: '1px solid #e2e8f0', borderRadius: '6px' },
+    textEditor: { key: 'items', multiline: true },
     propSchema: [{ key: 'items', label: '内容(每行一项)', type: 'textarea' }],
     render: (node) => {
       const items = splitList(node.props.items)
@@ -77,6 +78,7 @@ export const dataWidgets: WidgetDef[] = [
     defaultSize: { w: 220, h: 140 },
     defaultProps: { title: '卡片标题', body: '这里是卡片的描述内容。' },
     defaultStyle: { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a' },
+    textEditor: { key: 'title' },
     propSchema: [
       { key: 'title', label: '标题', type: 'text' },
       { key: 'body', label: '内容', type: 'textarea' }
@@ -100,6 +102,7 @@ export const dataWidgets: WidgetDef[] = [
     defaultSize: { w: 56, h: 24 },
     defaultProps: { label: '标签' },
     defaultStyle: { background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '4px', fontSize: '12px' },
+    textEditor: { key: 'label' },
     propSchema: [{ key: 'label', label: '文字', type: 'text' }],
     render: (node) => box(node, str(node.props.label, '标签'), { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px' })
   },
@@ -112,6 +115,7 @@ export const dataWidgets: WidgetDef[] = [
     defaultSize: { w: 40, h: 40 },
     defaultProps: { text: '王' },
     defaultStyle: { background: '#cbd5e1', color: '#ffffff', borderRadius: '50%', fontSize: '16px' },
+    textEditor: { key: 'text' },
     propSchema: [{ key: 'text', label: '文字', type: 'text' }],
     render: (node) => box(node, str(node.props.text, ''), { display: 'flex', alignItems: 'center', justifyContent: 'center' })
   },
@@ -158,6 +162,7 @@ export const dataWidgets: WidgetDef[] = [
     defaultSize: { w: 240, h: 24 },
     defaultProps: { items: '首页/列表/详情' },
     defaultStyle: { color: '#0f172a', fontSize: '13px', background: 'transparent' },
+    textEditor: { key: 'items' },
     propSchema: [{ key: 'items', label: '路径(斜杠分隔)', type: 'text' }],
     render: (node) => {
       const items = str(node.props.items)

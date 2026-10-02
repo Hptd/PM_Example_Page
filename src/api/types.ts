@@ -12,10 +12,3 @@ export interface ListResult {
   rows: ProjectRecord[]
   total: number
 }
-
-export interface UserInfo {
-  userName: string
-  nickName?: string
-  roles: string[]
-  permissions: string[]
-}

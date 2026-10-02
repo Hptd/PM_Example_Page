@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useEditorStore } from '../core/store'
-import { registry } from '../core/registry'
-import type { PMNode } from '../core/schema'
-import IconGlyph from '../components/IconGlyph.vue'
+import { useEditorStore } from '@/editor/core/store'
+import { displayName, registry } from '@/editor/core/registry'
+import { walkTree } from '@/editor/core/tree'
+import type { PMNode } from '@/editor/core/schema'
+import IconGlyph from '@/editor/components/IconGlyph.vue'
 
 const store = useEditorStore()
 
@@ -16,13 +17,9 @@ const rows = computed<Row[]>(() => {
   const frame = store.activeFrame
   if (!frame) return []
   const result: Row[] = []
-  const walk = (nodes: PMNode[], depth: number) => {
-    for (const node of nodes) {
-      result.push({ node, depth })
-      if (node.children?.length) walk(node.children, depth + 1)
-    }
-  }
-  walk(frame.tree, 0)
+  walkTree(frame.tree, (node, context) => {
+    result.push({ node, depth: context.depth })
+  })
   return result
 })
 
@@ -63,7 +60,7 @@ function toggleLocked(node: PMNode) {
       @click="store.select(row.node.id)"
     >
       <icon-glyph :name="iconOf(row.node)" size="16px" />
-      <span class="layer-row__name">{{ row.node.name || registry.get(row.node.type)?.name || row.node.type }}</span>
+      <span class="layer-row__name">{{ displayName(row.node) }}</span>
       <button class="layer-row__action" :title="row.node.hidden ? '显示' : '隐藏'" @click.stop="toggleHidden(row.node)">
         <icon-glyph :name="row.node.hidden ? 'tabler:eye-off' : 'tabler:eye'" size="15px" />
       </button>

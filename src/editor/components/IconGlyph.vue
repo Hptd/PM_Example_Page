@@ -1,6 +1,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { renderIcon } from '../widgets/icons'
+import { renderIcon } from '@/editor/widgets/icons'
 
 export default defineComponent({
   name: 'IconGlyph',

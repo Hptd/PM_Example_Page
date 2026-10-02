@@ -15,7 +15,12 @@ export interface PropField {
   iconSet?: 'tabler' | 'simple-icons' | 'all'
 }
 
-export type WidgetCategory = 'basic' | 'form' | 'data' | 'nav'
+export type WidgetCategory = 'basic' | 'form' | 'data' | 'nav' | 'custom'
+
+export interface TextEditorDef {
+  key: string
+  multiline?: boolean
+}
 
 export interface WidgetDef {
   type: string
@@ -27,6 +32,7 @@ export interface WidgetDef {
   defaultProps: Record<string, unknown>
   defaultStyle: Record<string, string | number>
   droppable?: boolean
+  textEditor?: TextEditorDef
   propSchema: PropField[]
   render(node: PMNode, children: VNode[]): VNode
 }
@@ -63,3 +69,7 @@ class WidgetRegistry {
 }
 
 export const registry = new WidgetRegistry()
+
+export function displayName(node: PMNode): string {
+  return node.name || registry.get(node.type)?.name || node.type
+}

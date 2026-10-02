@@ -1,5 +1,5 @@
 import { h, type VNode, type VNodeArrayChildren } from 'vue'
-import type { PMNode } from '../core/schema'
+import type { PMNode } from '@/editor/core/schema'
 
 export type StyleMap = Record<string, string | number>
 

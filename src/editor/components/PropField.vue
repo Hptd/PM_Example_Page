@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { PropField } from '../core/registry'
+import type { PropField } from '@/editor/core/registry'
 import IconGlyph from './IconGlyph.vue'
 import IconPicker from './IconPicker.vue'
 

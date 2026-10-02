@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
-import type { Frame } from '../core/schema'
-import { useEditorStore } from '../core/store'
-import { registry } from '../core/registry'
-import { collectAnchors, hitTest } from '../core/hitTest'
-import { absolutePosition } from '../core/tree'
+import { computed, nextTick, onBeforeUnmount, ref, type CSSProperties } from 'vue'
+import type { Frame, PMNode } from '@/editor/core/schema'
+import { useEditorStore } from '@/editor/core/store'
+import { registry } from '@/editor/core/registry'
+import { collectAnchors, hitTest } from '@/editor/core/hitTest'
+import { absolutePosition, findNode } from '@/editor/core/tree'
 import {
   RESIZE_HANDLES,
   resizeRect,
@@ -12,7 +12,7 @@ import {
   type Point,
   type ResizeHandle,
   type SnapBox
-} from '../core/geometry'
+} from '@/editor/core/geometry'
 import NodeLayer from './NodeLayer.vue'
 
 const props = defineProps<{ frame: Frame; zoom: number }>()
@@ -33,6 +33,37 @@ interface DragState {
 }
 
 let drag: DragState | null = null
+
+interface EditingState {
+  nodeId: string
+  key: string
+  value: string
+  multiline: boolean
+  x: number
+  y: number
+  w: number
+  h: number
+  fontSize: string
+  textAlign: string
+  color: string
+}
+
+const editing = ref<EditingState | null>(null)
+const editEl = ref<HTMLInputElement | HTMLTextAreaElement | null>(null)
+
+const editorStyle = computed<CSSProperties>(() => {
+  const state = editing.value
+  if (!state) return {}
+  return {
+    left: `${state.x}px`,
+    top: `${state.y}px`,
+    width: `${state.w}px`,
+    height: `${state.h}px`,
+    fontSize: state.fontSize,
+    textAlign: state.textAlign as CSSProperties['textAlign'],
+    color: state.color
+  }
+})
 
 const frameStyle = computed(() => ({
   left: `${props.frame.x}px`,
@@ -91,18 +122,26 @@ function localPoint(event: MouseEvent): Point {
   return { x: (event.clientX - rect.left) / props.zoom, y: (event.clientY - rect.top) / props.zoom }
 }
 
-function onDrop(event: DragEvent) {
-  const type = event.dataTransfer?.getData('application/x-pm-widget')
-  if (!type || !registry.has(type)) return
-  const point = localPoint(event)
+function resolveDrop(point: Point): { parentId: string | null; x: number; y: number } {
   const target = hitTest(props.frame.tree, point)
-  store.mutate(() => {
-    if (target && registry.get(target.type)?.droppable) {
-      store.addWidget(type, props.frame.id, point.x - target.x, point.y - target.y, target.id)
-    } else {
-      store.addWidget(type, props.frame.id, point.x, point.y)
-    }
-  })
+  if (target && registry.get(target.type)?.droppable) {
+    const position = absolutePosition(props.frame, target.id)
+    if (position) return { parentId: target.id, x: point.x - position.x, y: point.y - position.y }
+  }
+  return { parentId: null, x: point.x, y: point.y }
+}
+
+function onDrop(event: DragEvent) {
+  const type = event.dataTransfer?.getData('application/x-pm-widget') ?? ''
+  if (type.startsWith('custom:')) {
+    const customId = type.slice('custom:'.length)
+    const drop = resolveDrop(localPoint(event))
+    store.mutate(() => store.addCustom(customId, props.frame.id, drop.x, drop.y, drop.parentId))
+    return
+  }
+  if (!type || !registry.has(type)) return
+  const drop = resolveDrop(localPoint(event))
+  store.mutate(() => store.addWidget(type, props.frame.id, drop.x, drop.y, drop.parentId))
 }
 
 function snapMove(nodeId: string, rect: { x: number; y: number; w: number; h: number }) {
@@ -186,6 +225,99 @@ function onContextMenu(event: MouseEvent) {
   emit('frame-menu', { frameId: props.frame.id, x: event.clientX, y: event.clientY })
 }
 
+function activateEditor(state: EditingState) {
+  editing.value = state
+  store.select(state.nodeId)
+  void nextTick(() => {
+    editEl.value?.focus()
+    editEl.value?.select?.()
+  })
+}
+
+function propOf(node: PMNode, key: string): string {
+  return node.props[key] === undefined ? '' : String(node.props[key])
+}
+
+function onClickedEditTarget(event: MouseEvent): boolean {
+  const target = event.target as HTMLElement | null
+  const key = target?.dataset?.pmEdit
+  if (!key || !target) return false
+  const nodeEl = target.closest('[data-pm-id]') as HTMLElement | null
+  const nodeId = nodeEl?.dataset.pmId
+  const node = nodeId ? findNode([props.frame], nodeId)?.node : undefined
+  if (!node) return false
+  const zoom = props.zoom || 1
+  const frameRect = frameEl.value?.getBoundingClientRect()
+  const rect = target.getBoundingClientRect()
+  const computed = window.getComputedStyle(target)
+  activateEditor({
+    nodeId: node.id,
+    key,
+    value: propOf(node, key),
+    multiline: false,
+    x: frameRect ? (rect.left - frameRect.left) / zoom : node.x,
+    y: frameRect ? (rect.top - frameRect.top) / zoom : node.y,
+    w: rect.width / zoom || node.w,
+    h: rect.height / zoom || node.h,
+    fontSize: computed.fontSize,
+    textAlign: computed.textAlign,
+    color: computed.color
+  })
+  return true
+}
+
+function onDblClick(event: MouseEvent) {
+  if (onClickedEditTarget(event)) return
+
+  const node = hitTest(props.frame.tree, localPoint(event))
+  if (!node) return
+  const def = registry.get(node.type)
+  if (!def?.textEditor) return
+  const position = absolutePosition(props.frame, node.id) ?? { x: node.x, y: node.y }
+  activateEditor({
+    nodeId: node.id,
+    key: def.textEditor.key,
+    value: propOf(node, def.textEditor.key),
+    multiline: def.textEditor.multiline ?? false,
+    x: position.x,
+    y: position.y,
+    w: node.w,
+    h: node.h,
+    fontSize: node.style?.fontSize !== undefined ? String(node.style.fontSize) : '14px',
+    textAlign: node.style?.textAlign !== undefined ? String(node.style.textAlign) : 'left',
+    color: node.style?.color !== undefined ? String(node.style.color) : '#1f2937'
+  })
+}
+
+function onEditInput(event: Event) {
+  if (!editing.value) return
+  editing.value.value = (event.target as HTMLInputElement | HTMLTextAreaElement).value
+}
+
+function onEditKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    editing.value = null
+    return
+  }
+  const multiline = editing.value?.multiline ?? false
+  if (event.key === 'Enter' && (!multiline || event.ctrlKey || event.metaKey)) {
+    event.preventDefault()
+    commitEdit()
+  }
+}
+
+function commitEdit() {
+  const state = editing.value
+  editing.value = null
+  if (!state) return
+  const node = findNode([props.frame], state.nodeId)?.node
+  const previous = node?.props[state.key] === undefined ? '' : String(node?.props[state.key])
+  if (!node || previous === state.value) return
+  store.mutate(() => store.updateNodeProps(state.nodeId, { [state.key]: state.value }))
+}
+
 onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', onPointerUp)
@@ -200,11 +332,31 @@ onBeforeUnmount(() => {
     :style="frameStyle"
     :data-frame-id="frame.id"
     @pointerdown="onPointerDown"
+    @dblclick="onDblClick"
     @contextmenu.prevent="onContextMenu"
     @dragover.prevent
     @drop.prevent="onDrop"
   >
     <node-layer :nodes="frame.tree" />
+
+    <div v-if="editing" class="pm-inline-editor" :style="editorStyle" @pointerdown.stop @dblclick.stop @click.stop>
+      <textarea
+        v-if="editing.multiline"
+        ref="editEl"
+        :value="editing.value"
+        @input="onEditInput"
+        @keydown="onEditKeydown"
+        @blur="commitEdit"
+      />
+      <input
+        v-else
+        ref="editEl"
+        :value="editing.value"
+        @input="onEditInput"
+        @keydown="onEditKeydown"
+        @blur="commitEdit"
+      />
+    </div>
 
     <div v-if="guides.vertical.length || guides.horizontal.length" class="pm-guides">
       <div v-for="(x, index) in guides.vertical" :key="`v${index}`" class="pm-guide-v" :style="{ left: `${x}px` }" />

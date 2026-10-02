@@ -1,7 +1,9 @@
 import { h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import type { Comment, Frame, ID, PMNode, Project } from '../core/schema'
-import { renderNode, type RenderOptions } from '../render/renderNode'
+import type { Comment, Frame, ID, Project } from '@/editor/core/schema'
+import { walkTree } from '@/editor/core/tree'
+import { renderNode, type RenderOptions } from '@/editor/render/renderNode'
+import { loadAllIconSets } from '@/editor/widgets/icons'
 
 export interface ExportResult {
   cleanHtml: string
@@ -87,21 +89,12 @@ function safeJson(value: unknown): string {
   return JSON.stringify(value).replace(/</g, '\\u003c')
 }
 
-function collectIds(nodes: PMNode[], out: ID[]): void {
-  for (const node of nodes) {
-    out.push(node.id)
-    if (node.children?.length) collectIds(node.children, out)
-  }
-}
-
 function collectFrameAnnotations(frame: Frame, annotations: Record<ID, Comment[]>): Record<ID, Comment[]> {
-  const ids: ID[] = []
-  collectIds(frame.tree, ids)
   const result: Record<ID, Comment[]> = {}
-  for (const id of ids) {
-    const list = annotations[id]
-    if (list?.length) result[id] = list
-  }
+  walkTree(frame.tree, (node) => {
+    const list = annotations[node.id]
+    if (list?.length) result[node.id] = list
+  })
   return result
 }
 
@@ -142,6 +135,7 @@ function wrapDocument(title: string, body: string, annotationScript: string): st
 }
 
 export async function exportFrame(frame: Frame, project: Project): Promise<ExportResult> {
+  await loadAllIconSets()
   const annotationMap = collectFrameAnnotations(frame, project.annotations)
   const commentCounts: Record<ID, number> = {}
   for (const [id, list] of Object.entries(annotationMap)) {

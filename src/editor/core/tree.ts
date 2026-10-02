@@ -8,29 +8,49 @@ export interface NodeLocation {
   index: number
 }
 
-export function walk(nodes: PMNode[], visit: (node: PMNode, parent: PMNode | null) => void, parent: PMNode | null = null): void {
-  for (const node of nodes) {
-    visit(node, parent)
-    if (node.children?.length) walk(node.children, visit, node)
+export interface WalkContext {
+  parent: PMNode | null
+  siblings: PMNode[]
+  index: number
+  offsetX: number
+  offsetY: number
+  depth: number
+}
+
+export function walkTree(
+  nodes: PMNode[],
+  visit: (node: PMNode, context: WalkContext) => boolean | void,
+  context: Partial<WalkContext> = {}
+): boolean {
+  const parent = context.parent ?? null
+  const offsetX = context.offsetX ?? 0
+  const offsetY = context.offsetY ?? 0
+  const depth = context.depth ?? 0
+  for (let index = 0; index < nodes.length; index += 1) {
+    const node = nodes[index]!
+    if (visit(node, { parent, siblings: nodes, index, offsetX, offsetY, depth }) === true) return true
+    if (node.children?.length) {
+      const stopped = walkTree(node.children, visit, {
+        parent: node,
+        offsetX: offsetX + node.x,
+        offsetY: offsetY + node.y,
+        depth: depth + 1
+      })
+      if (stopped) return true
+    }
   }
+  return false
 }
 
 export function findNode(frames: Frame[], id: ID): NodeLocation | null {
   for (const frame of frames) {
-    const found = findInList(frame.tree, id, frame, null)
+    let found: NodeLocation | null = null
+    walkTree(frame.tree, (node, context) => {
+      if (node.id !== id) return false
+      found = { frame, node, parent: context.parent, siblings: context.siblings, index: context.index }
+      return true
+    })
     if (found) return found
-  }
-  return null
-}
-
-function findInList(list: PMNode[], id: ID, frame: Frame, parent: PMNode | null): NodeLocation | null {
-  for (let index = 0; index < list.length; index += 1) {
-    const node = list[index]!
-    if (node.id === id) return { frame, node, parent, siblings: list, index }
-    if (node.children?.length) {
-      const found = findInList(node.children, id, frame, node)
-      if (found) return found
-    }
   }
   return null
 }
@@ -47,26 +67,17 @@ export function removeFromTree(frames: Frame[], id: ID): NodeLocation | null {
 }
 
 export function isDescendant(root: PMNode, candidateId: ID): boolean {
-  if (!root.children?.length) return false
-  for (const child of root.children) {
-    if (child.id === candidateId) return true
-    if (isDescendant(child, candidateId)) return true
-  }
-  return false
+  return walkTree(root.children ?? [], (node) => node.id === candidateId)
 }
 
 export function absolutePosition(frame: Frame, nodeId: ID): { x: number; y: number } | null {
-  function walk(nodes: PMNode[], offsetX: number, offsetY: number): { x: number; y: number } | null {
-    for (const node of nodes) {
-      if (node.id === nodeId) return { x: offsetX + node.x, y: offsetY + node.y }
-      if (node.children?.length) {
-        const found = walk(node.children, offsetX + node.x, offsetY + node.y)
-        if (found) return found
-      }
-    }
-    return null
-  }
-  return walk(frame.tree, 0, 0)
+  let found: { x: number; y: number } | null = null
+  walkTree(frame.tree, (node, context) => {
+    if (node.id !== nodeId) return false
+    found = { x: context.offsetX + node.x, y: context.offsetY + node.y }
+    return true
+  })
+  return found
 }
 
 export function cloneNode(node: PMNode, makeId: (prefix?: string) => ID): PMNode {
