@@ -20,6 +20,15 @@ describe('geometry', () => {
     expect(resizeRect(rect, 'nw', 10, 10)).toEqual({ x: 20, y: 20, w: 90, h: 40 })
   })
 
+  it('keeps aspect ratio from a corner anchored at the opposite corner', () => {
+    const rect = { x: 0, y: 0, w: 100, h: 50 }
+    const result = resizeRect(rect, 'se', 100, 0, 8, true)
+    expect(result.x).toBe(0)
+    expect(result.y).toBe(0)
+    expect(result.w).toBe(200)
+    expect(result.h).toBe(100)
+  })
+
   it('snaps to sibling edges', () => {
     const result = snapRect({ x: 103, y: 0, w: 50, h: 20 }, [{ x: 100, y: 0, w: 50, h: 20 }], 6)
     expect(result.x).toBe(100)

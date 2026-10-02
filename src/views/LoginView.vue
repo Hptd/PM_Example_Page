@@ -5,10 +5,9 @@ import { login } from '@/api/auth'
 
 const router = useRouter()
 const route = useRoute()
-const isDev = import.meta.env.DEV
 
-const username = ref(isDev ? 'wangzhe' : '')
-const password = ref(isDev ? '123456' : '')
+const username = ref('')
+const password = ref('')
 const error = ref('')
 const loading = ref(false)
 
@@ -48,8 +47,6 @@ async function submit() {
       <button class="auth-submit" type="submit" :disabled="loading">
         {{ loading ? '登录中...' : '登 录' }}
       </button>
-
-      <p v-if="isDev" class="auth-hint">默认账号：wangzhe / 123456</p>
     </form>
   </div>
 </template>

@@ -34,6 +34,11 @@ function toggleHidden(node: PMNode) {
 function toggleLocked(node: PMNode) {
   store.mutate(() => store.updateNodeMeta(node.id, { locked: !node.locked }))
 }
+
+function onRowClick(id: string, event: MouseEvent) {
+  if (event.ctrlKey || event.metaKey) store.toggleSelect(id)
+  else store.select(id)
+}
 </script>
 
 <template>
@@ -55,9 +60,9 @@ function toggleLocked(node: PMNode) {
       v-for="row in rows"
       :key="row.node.id"
       class="layer-row"
-      :class="{ active: store.selectedId === row.node.id, dim: row.node.hidden }"
+      :class="{ active: store.selectedIds.includes(row.node.id), dim: row.node.hidden }"
       :style="{ paddingLeft: `${8 + row.depth * 14}px` }"
-      @click="store.select(row.node.id)"
+      @click="onRowClick(row.node.id, $event)"
     >
       <icon-glyph :name="iconOf(row.node)" size="16px" />
       <span class="layer-row__name">{{ displayName(row.node) }}</span>

@@ -43,6 +43,8 @@ interface HttpOptions {
   auth?: boolean
 }
 
+const REQUEST_TIMEOUT = 15000
+
 export async function http<T>(options: HttpOptions): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (options.auth !== false) {
@@ -50,15 +52,28 @@ export async function http<T>(options: HttpOptions): Promise<T> {
     if (token) headers.Authorization = `Bearer ${token}`
   }
 
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
   let response: Response
   try {
     response = await fetch(BASE + options.url, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body)
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: controller.signal
     })
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new ApiError(-1, '请求超时，请稍后重试')
+    }
     throw new ApiError(-1, '无法连接后端服务，请确认后端已启动')
+  } finally {
+    clearTimeout(timer)
+  }
+
+  if (response.status === 401) {
+    clearToken()
+    throw new ApiError(401, '登录状态已失效，请重新登录')
   }
 
   const text = await response.text()

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { exportFrame } from './exportFrame'
 import { buildSpec } from './spec'
 import { createFrame, createProject } from '@/editor/core/schema'
+import '@/editor/widgets'
 
 describe('export', () => {
   it('renders clean and annotated html', async () => {

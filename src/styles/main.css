@@ -147,13 +147,6 @@ textarea {
   background: var(--pm-primary-hover);
 }
 
-.auth-hint {
-  margin: 4px 0 0;
-  text-align: center;
-  color: var(--pm-muted);
-  font-size: 12px;
-}
-
 /* ---------- 项目列表 ---------- */
 .project-page {
   min-height: 100%;
@@ -327,7 +320,7 @@ textarea {
   gap: 10px;
 }
 
-.dialog__actions button {
+.dialog__actions button:not(.btn-primary) {
   border: 1px solid var(--pm-border);
   background: #fff;
   border-radius: 6px;
@@ -530,6 +523,86 @@ textarea.field__control {
 
 .editor-state.dirty {
   color: #d97706;
+}
+
+.editor-error {
+  font-size: 12px;
+  color: var(--pm-danger);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- 顶部对齐工具栏 ---------- */
+.align-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.align-dropdown {
+  position: relative;
+}
+
+.align-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--pm-border);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  color: var(--pm-text);
+  white-space: nowrap;
+}
+
+.align-btn:hover,
+.align-btn.active {
+  border-color: var(--pm-primary);
+  color: var(--pm-primary);
+}
+
+.align-btn__caret {
+  font-size: 10px;
+  color: var(--pm-muted);
+}
+
+.align-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  min-width: 152px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid var(--pm-border);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.align-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--pm-text);
+  text-align: left;
+}
+
+.align-menu__item:hover {
+  background: #eff6ff;
+  color: var(--pm-primary);
 }
 
 .editor-topbar__group {
@@ -876,6 +949,22 @@ textarea.field__control {
   color: var(--pm-primary);
 }
 
+.prop-layer button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.prop-layer button:disabled:hover {
+  border-color: var(--pm-border);
+  color: var(--pm-text);
+}
+
+.prop-tip {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--pm-muted);
+}
+
 /* ---------- 图层面板 ---------- */
 .layers-frame {
   margin-bottom: 10px;
@@ -1043,6 +1132,7 @@ textarea.field__control {
   position: absolute;
   inset: 0;
   overflow: hidden;
+  user-select: none;
   background:
     radial-gradient(circle, #cbd5e1 1px, transparent 1px) 0 0 / 20px 20px,
     #f8fafc;
@@ -1070,6 +1160,14 @@ textarea.field__control {
 
 .canvas-empty__hint {
   font-size: 12px;
+}
+
+.canvas-marquee {
+  position: absolute;
+  z-index: 20;
+  border: 1px solid var(--pm-primary);
+  background: rgba(37, 99, 235, 0.08);
+  pointer-events: none;
 }
 
 .pm-frame {

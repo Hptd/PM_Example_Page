@@ -19,4 +19,16 @@ describe('schema', () => {
   it('rejects payloads without frames', () => {
     expect(() => parseProject('{"name":"x"}')).toThrow()
   })
+
+  it('normalizes malformed node values', () => {
+    const raw = JSON.stringify({
+      name: 'x',
+      frames: [{ id: 'f1', tree: [{ id: 'n1', x: 'bad', w: -5, props: 'oops' }] }]
+    })
+    const project = parseProject(raw)
+    const node = project.frames[0]!.tree[0]!
+    expect(node.x).toBe(0)
+    expect(node.w).toBe(8)
+    expect(node.props).toEqual({})
+  })
 })

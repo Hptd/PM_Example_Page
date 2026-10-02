@@ -1,6 +1,6 @@
 import { h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import type { Comment, Frame, ID, Project } from '@/editor/core/schema'
+import { countComments, type Comment, type Frame, type ID, type Project } from '@/editor/core/schema'
 import { walkTree } from '@/editor/core/tree'
 import { renderNode, type RenderOptions } from '@/editor/render/renderNode'
 import { loadAllIconSets } from '@/editor/widgets/icons'
@@ -14,7 +14,7 @@ export interface ExportResult {
 const BASE_CSS = [
   '*{box-sizing:border-box}',
   'body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;background:#f1f5f9}',
-  '.pm-frame{position:relative;margin:0 auto}',
+  '.pm-frame{margin:0 auto}',
   '.pm-node{position:absolute}'
 ].join('')
 
@@ -137,10 +137,7 @@ function wrapDocument(title: string, body: string, annotationScript: string): st
 export async function exportFrame(frame: Frame, project: Project): Promise<ExportResult> {
   await loadAllIconSets()
   const annotationMap = collectFrameAnnotations(frame, project.annotations)
-  const commentCounts: Record<ID, number> = {}
-  for (const [id, list] of Object.entries(annotationMap)) {
-    if (list.length) commentCounts[id] = list.length
-  }
+  const commentCounts = countComments(annotationMap)
 
   const [cleanBody, annotatedBody] = await Promise.all([
     renderFrameBody(frame, {}),

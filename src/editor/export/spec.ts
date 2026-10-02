@@ -1,4 +1,4 @@
-import { registry } from '@/editor/core/registry'
+import { displayName } from '@/editor/core/registry'
 import { walkTree } from '@/editor/core/tree'
 import type { PMNode, Project } from '@/editor/core/schema'
 
@@ -25,7 +25,7 @@ export function buildSpec(project: Project): string {
     }
     walkTree(frame.tree, (node, context) => {
       const indent = '  '.repeat(context.depth)
-      const name = node.name || registry.get(node.type)?.name || node.type
+      const name = displayName(node)
       lines.push(`${indent}- [${name}] (${node.x}, ${node.y}) ${node.w}×${node.h}`)
       const details = formatProps(node)
       if (details.length) lines.push(`${indent}  - 属性：${details.join('；')}`)

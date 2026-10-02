@@ -35,10 +35,14 @@ onMounted(refresh)
 async function create() {
   const name = newName.value.trim()
   if (!name) return
-  const record = await saveProject({ id: '', name, content: serializeProject(createProject(name)) })
-  showDialog.value = false
-  newName.value = ''
-  await router.push(`/editor/${record.id}`)
+  try {
+    await saveProject({ id: '', name, content: serializeProject(createProject(name)) })
+    showDialog.value = false
+    newName.value = ''
+    await refresh()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '创建失败'
+  }
 }
 
 function open(record: ProjectRecord) {
@@ -47,13 +51,20 @@ function open(record: ProjectRecord) {
 
 async function remove(record: ProjectRecord) {
   if (!window.confirm(`确认删除项目「${record.name}」？该操作不可恢复。`)) return
-  await deleteProject(record.id)
-  await refresh()
+  try {
+    await deleteProject(record.id)
+    await refresh()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '删除失败'
+  }
 }
 
 async function doLogout() {
-  await logout()
-  await router.replace('/login')
+  try {
+    await logout()
+  } finally {
+    await router.replace('/login')
+  }
 }
 
 function formatTime(value?: string): string {
@@ -108,7 +119,7 @@ function formatTime(value?: string): string {
         <input v-model="newName" placeholder="请输入项目名称" @keyup.enter="create" />
         <div class="dialog__actions">
           <button @click="showDialog = false">取消</button>
-          <button class="btn-primary" @click="create">创建</button>
+          <button class="btn-primary" :disabled="!newName.trim()" @click="create">创建</button>
         </div>
       </div>
     </div>

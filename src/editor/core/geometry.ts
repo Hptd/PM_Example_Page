@@ -90,19 +90,48 @@ export function snapRect(target: SnapBox, others: SnapBox[], threshold: number):
 export const RESIZE_HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const
 export type ResizeHandle = (typeof RESIZE_HANDLES)[number]
 
-export function resizeRect(rect: Rect, handle: ResizeHandle, dx: number, dy: number, minSize = 8): Rect {
+export function resizeRect(
+  rect: Rect,
+  handle: ResizeHandle,
+  dx: number,
+  dy: number,
+  minSize = 8,
+  keepAspect = false
+): Rect {
   let { x, y, w, h } = rect
-  if (handle.includes('e')) w = Math.max(minSize, rect.w + dx)
-  if (handle.includes('s')) h = Math.max(minSize, rect.h + dy)
-  if (handle.includes('w')) {
+  const hasE = handle.includes('e')
+  const hasW = handle.includes('w')
+  const hasS = handle.includes('s')
+  const hasN = handle.includes('n')
+
+  if (hasE) w = Math.max(minSize, rect.w + dx)
+  if (hasS) h = Math.max(minSize, rect.h + dy)
+  if (hasW) {
     const nextW = Math.max(minSize, rect.w - dx)
     x = rect.x + (rect.w - nextW)
     w = nextW
   }
-  if (handle.includes('n')) {
+  if (hasN) {
     const nextH = Math.max(minSize, rect.h - dy)
     y = rect.y + (rect.h - nextH)
     h = nextH
   }
+
+  const ratio = rect.h !== 0 ? rect.w / rect.h : 1
+  if (keepAspect && ratio > 0) {
+    if ((hasE || hasW) && (hasS || hasN)) {
+      if (w / ratio >= h) h = w / ratio
+      else w = h * ratio
+      if (hasW) x = rect.x + rect.w - w
+      if (hasN) y = rect.y + rect.h - h
+    } else if (hasE || hasW) {
+      h = w / ratio
+      y = rect.y + (rect.h - h) / 2
+    } else if (hasS || hasN) {
+      w = h * ratio
+      x = rect.x + (rect.w - w) / 2
+    }
+  }
+
   return { x, y, w, h }
 }

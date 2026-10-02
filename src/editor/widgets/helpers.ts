@@ -32,13 +32,3 @@ export function splitList(value: unknown): string[] {
     .map((item) => item.trim())
     .filter(Boolean)
 }
-
-export function centerText(node: PMNode, text: string): VNode {
-  return box(node, text, {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: node.style?.textAlign === 'center' ? 'center' : 'flex-start',
-    padding: '0 8px',
-    overflow: 'hidden'
-  })
-}

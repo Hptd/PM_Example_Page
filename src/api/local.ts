@@ -22,7 +22,11 @@ function readAll(): ProjectRecord[] {
 }
 
 function writeAll(records: ProjectRecord[]): void {
-  localStorage.setItem(PROJECTS_KEY, JSON.stringify(records))
+  try {
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(records))
+  } catch {
+    throw new Error('本地存储空间不足，操作未保存')
+  }
 }
 
 export function localLogin(username: string, password: string): boolean {

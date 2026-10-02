@@ -35,7 +35,12 @@ function read(): CustomWidget[] {
 }
 
 function write(list: CustomWidget[]): void {
-  if (typeof localStorage !== 'undefined') localStorage.setItem(storageKey(), JSON.stringify(list))
+  if (typeof localStorage === 'undefined') return
+  try {
+    localStorage.setItem(storageKey(), JSON.stringify(list))
+  } catch {
+    throw new Error('本地存储空间不足，自定义组件未保存')
+  }
 }
 
 export const customWidgets = ref<CustomWidget[]>(read())

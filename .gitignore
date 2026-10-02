@@ -11,4 +11,3 @@ backend/**/target/
 backend/**/*.class
 
 main-files
-DESIGN.MD

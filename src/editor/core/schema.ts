@@ -130,25 +130,42 @@ function normalizeFrame(frame: Partial<Frame>): Frame {
   return createFrame({
     id: frame.id,
     name: frame.name,
-    x: frame.x,
-    y: frame.y,
-    w: frame.w,
-    h: frame.h,
+    x: toFinite(frame.x, 0),
+    y: toFinite(frame.y, 0),
+    w: Math.max(40, toFinite(frame.w, 1280)),
+    h: Math.max(40, toFinite(frame.h, 800)),
     background: frame.background,
     tree: Array.isArray(frame.tree) ? frame.tree.map((node) => normalizeNode(node)) : []
   })
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function toFinite(value: unknown, fallback: number): number {
+  const num = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(num) ? num : fallback
+}
+
+export function countComments(annotations: Record<ID, Comment[]>): Record<ID, number> {
+  const counts: Record<ID, number> = {}
+  for (const [nodeId, list] of Object.entries(annotations)) {
+    if (list.length) counts[nodeId] = list.length
+  }
+  return counts
 }
 
 function normalizeNode(node: Partial<PMNode>): PMNode {
   const normalized: PMNode = {
     id: node.id ?? createId('n'),
     type: node.type ?? 'pm-rect',
-    x: node.x ?? 0,
-    y: node.y ?? 0,
-    w: node.w ?? 100,
-    h: node.h ?? 40,
-    props: node.props ?? {},
-    style: node.style ?? {}
+    x: toFinite(node.x, 0),
+    y: toFinite(node.y, 0),
+    w: Math.max(8, toFinite(node.w, 100)),
+    h: Math.max(8, toFinite(node.h, 40)),
+    props: isRecord(node.props) ? node.props : {},
+    style: isRecord(node.style) ? (node.style as PMNode['style']) : {}
   }
   if (node.name !== undefined) normalized.name = node.name
   if (node.locked !== undefined) normalized.locked = node.locked

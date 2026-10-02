@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useEditorStore } from '@/editor/core/store'
+import { useEditorStore, type AlignMode } from '@/editor/core/store'
 import { registry, type PropField as PropFieldDef } from '@/editor/core/registry'
 import PropField from '@/editor/components/PropField.vue'
 
@@ -9,6 +9,7 @@ const store = useEditorStore()
 const node = computed(() => store.selectedNode)
 const frame = computed(() => store.activeFrame)
 const def = computed(() => (node.value ? registry.get(node.value.type) : undefined))
+const selectionCount = computed(() => store.selectedIds.length)
 
 const appearanceFields: PropFieldDef[] = [
   { key: 'background', label: '填充', type: 'color' },
@@ -88,6 +89,10 @@ function onLayer(direction: 'front' | 'back' | 'up' | 'down') {
   if (!current) return
   store.mutate(() => store.reorderNode(current.id, direction))
 }
+
+function onAlign(mode: AlignMode) {
+  store.alignSelection(mode)
+}
 </script>
 
 <template>
@@ -126,6 +131,20 @@ function onLayer(direction: 'front' | 'back' | 'up' | 'down') {
           <button @click="onLayer('down')">下移</button>
           <button @click="onLayer('up')">上移</button>
           <button @click="onLayer('front')">置顶</button>
+        </div>
+      </section>
+
+      <section v-if="selectionCount === 1" class="prop-section">
+        <h4>对齐（相对页面）</h4>
+        <div class="prop-layer">
+          <button title="左对齐" @click="onAlign('left')">左</button>
+          <button title="垂直居中" @click="onAlign('hcenter')">垂直</button>
+          <button title="右对齐" @click="onAlign('right')">右</button>
+        </div>
+        <div class="prop-layer">
+          <button title="顶对齐" @click="onAlign('top')">上</button>
+          <button title="水平居中" @click="onAlign('vcenter')">水平</button>
+          <button title="底对齐" @click="onAlign('bottom')">下</button>
         </div>
       </section>
 

@@ -1,7 +1,6 @@
 import { h, type VNode } from 'vue'
 import type { ID, PMNode } from '@/editor/core/schema'
 import { registry } from '@/editor/core/registry'
-import '@/editor/widgets'
 
 export interface RenderOptions {
   commentCounts?: Record<ID, number>

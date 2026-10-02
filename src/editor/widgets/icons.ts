@@ -14,6 +14,10 @@ const LOADING = new Map<IconPrefix, Promise<void>>()
 
 const iconDataVersion = ref(0)
 
+function readVersion(): number {
+  return iconDataVersion.value
+}
+
 function isIconPrefix(value: string): value is IconPrefix {
   return value === 'tabler' || value === 'simple-icons'
 }
@@ -45,7 +49,7 @@ function resolveIconName(name: string): string {
 }
 
 export function iconNames(prefix: IconPrefix): string[] {
-  iconDataVersion.value
+  readVersion()
   const set = SETS[prefix]
   if (!set) {
     ensureIconSet(prefix)
@@ -59,7 +63,7 @@ export function iconNames(prefix: IconPrefix): string[] {
 }
 
 export function iconBody(name: string): { body: string; size: number } | null {
-  iconDataVersion.value
+  readVersion()
   const [prefix, key] = resolveIconName(name).split(':') as [string, string]
   if (!isIconPrefix(prefix)) return null
   const set = SETS[prefix]

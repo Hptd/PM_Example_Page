@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEditorStore } from '@/editor/core/store'
 import { registry } from '@/editor/core/registry'
@@ -8,11 +8,14 @@ import { FRAME_SIZE_GROUPS, nextFramePosition, pickDefaultFrameSize } from '@/ed
 import { findCustomWidget } from '@/editor/core/customWidgets'
 import { findFrame } from '@/editor/core/tree'
 import { getProject, saveProject } from '@/api/project'
+import { useAutosave } from '@/composables/useAutosave'
+import { useEditorShortcuts } from '@/composables/useEditorShortcuts'
 import PalettePanel from '@/editor/panels/PalettePanel.vue'
 import PropertiesPanel from '@/editor/panels/PropertiesPanel.vue'
 import LayersPanel from '@/editor/panels/LayersPanel.vue'
 import CommentsPanel from '@/editor/panels/CommentsPanel.vue'
 import CanvasView from '@/editor/canvas/CanvasView.vue'
+import AlignToolbar from '@/editor/components/AlignToolbar.vue'
 import { exportFrame } from '@/editor/export/exportFrame'
 import { buildSpec } from '@/editor/export/spec'
 import { downloadText, safeFilename } from '@/editor/export/download'
@@ -24,35 +27,29 @@ const store = useEditorStore()
 const projectId = String(route.params.id)
 const rightTab = ref<'props' | 'layers' | 'comments'>('props')
 const loading = ref(true)
-const saving = ref(false)
 const canvasRef = ref<InstanceType<typeof CanvasView> | null>(null)
 
 const contextMenu = reactive({ visible: false, x: 0, y: 0, frameId: '' })
 const newPageMenu = ref(false)
 
-const AUTO_SAVE_DELAY = 1200
-let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+const defaultFrameSize = computed(() => pickDefaultFrameSize(store.project.frames))
 
-function cancelAutoSave() {
-  if (autoSaveTimer) {
-    clearTimeout(autoSaveTimer)
-    autoSaveTimer = null
-  }
+async function persist() {
+  const snapshot = serializeProject(store.project)
+  await saveProject({ id: projectId, name: store.project.name, content: snapshot })
+  if (serializeProject(store.project) === snapshot) store.dirty = false
+  else autosave.schedule()
 }
 
-watch(
-  () => store.dirty,
-  (dirty) => {
-    if (!dirty) return
-    cancelAutoSave()
-    autoSaveTimer = setTimeout(() => {
-      autoSaveTimer = null
-      void save()
-    }, AUTO_SAVE_DELAY)
-  }
-)
+const autosave = useAutosave(() => store.dirty, persist)
+const saving = autosave.saving
+const saveError = autosave.error
 
-const defaultFrameSize = computed(() => pickDefaultFrameSize(store.project.frames))
+function save(): Promise<boolean> {
+  return autosave.run()
+}
+
+const { onKeydown } = useEditorShortcuts(store, () => void save())
 
 onMounted(async () => {
   try {
@@ -71,26 +68,12 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
   window.removeEventListener('click', closeMenu)
-  if (autoSaveTimer) {
-    cancelAutoSave()
-    void save()
-  }
+  if (store.dirty) void save()
 })
 
-async function save() {
-  cancelAutoSave()
-  saving.value = true
-  try {
-    await saveProject({ id: projectId, name: store.project.name, content: serializeProject(store.project) })
-    store.dirty = false
-  } finally {
-    saving.value = false
-  }
-}
-
 async function goBack() {
-  await save()
-  await router.push('/')
+  const ok = await save()
+  if (ok) await router.push('/')
 }
 
 function renameProject(event: Event) {
@@ -145,15 +128,23 @@ function closeMenu() {
 async function exportAnnotated(frame?: Frame | null) {
   const target = frame ?? store.activeFrame
   if (!target) return
-  const result = await exportFrame(target, store.project)
-  downloadText(`${safeFilename(target.name)}-annotated.html`, result.annotatedHtml, 'text/html')
+  try {
+    const result = await exportFrame(target, store.project)
+    downloadText(`${safeFilename(target.name)}-annotated.html`, result.annotatedHtml, 'text/html')
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : '导出失败')
+  }
 }
 
 async function exportClean(frame?: Frame | null) {
   const target = frame ?? store.activeFrame
   if (!target) return
-  const result = await exportFrame(target, store.project)
-  downloadText(`${safeFilename(target.name)}.html`, result.cleanHtml, 'text/html')
+  try {
+    const result = await exportFrame(target, store.project)
+    downloadText(`${safeFilename(target.name)}.html`, result.cleanHtml, 'text/html')
+  } catch (error) {
+    window.alert(error instanceof Error ? error.message : '导出失败')
+  }
 }
 
 function exportSpec() {
@@ -171,51 +162,6 @@ function removeFrame(id: string) {
   if (!window.confirm('确认删除该页面？')) return
   store.mutate(() => store.removeFrame(id))
 }
-
-function onKeydown(event: KeyboardEvent) {
-  const target = event.target as HTMLElement
-  const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable
-  const mod = event.ctrlKey || event.metaKey
-  const key = event.key.toLowerCase()
-
-  if (mod && key === 's') {
-    event.preventDefault()
-    void save()
-    return
-  }
-  if (typing) return
-
-  if (mod && key === 'z') {
-    event.preventDefault()
-    if (event.shiftKey) store.redo()
-    else store.undo()
-    return
-  }
-  if (mod && key === 'y') {
-    event.preventDefault()
-    store.redo()
-    return
-  }
-  if (mod && key === 'd') {
-    event.preventDefault()
-    store.duplicateSelected()
-    return
-  }
-  if (mod && key === 'c') {
-    store.copySelected()
-    return
-  }
-  if (mod && key === 'v') {
-    store.pasteClipboard()
-    return
-  }
-  if (event.key === 'Delete' || event.key === 'Backspace') {
-    event.preventDefault()
-    store.removeSelected()
-    return
-  }
-  if (event.key === 'Escape') store.select(null)
-}
 </script>
 
 <template>
@@ -224,6 +170,9 @@ function onKeydown(event: KeyboardEvent) {
       <button class="btn-ghost" @click="goBack">返回</button>
       <input class="editor-title" :value="store.project.name" @change="renameProject" />
       <span class="editor-state" :class="{ dirty: store.dirty }">{{ store.dirty ? '未保存' : saving ? '保存中' : '已保存' }}</span>
+      <span v-if="saveError" class="editor-error">{{ saveError }}</span>
+
+      <align-toolbar v-if="store.selectedIds.length >= 2" />
 
       <div class="editor-topbar__group">
         <button class="btn-ghost" :disabled="!store.canUndo" title="撤销 Ctrl+Z" @click="store.undo()">撤销</button>

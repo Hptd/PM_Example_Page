@@ -104,28 +104,33 @@ async function confirmDialog() {
     dialog.error = '请输入组件名称'
     return
   }
-  if (dialog.tab === 'file') {
-    if (!pending.value) {
-      dialog.error = '请选择图片或 SVG 文件'
-      return
+  try {
+    if (dialog.tab === 'file') {
+      if (!pending.value) {
+        dialog.error = '请选择图片或 SVG 文件'
+        return
+      }
+      addCustomSvg(name, pending.value.src, pending.value.w, pending.value.h)
+    } else if (dialog.tab === 'svg') {
+      const code = dialog.svgCode.trim()
+      if (!code) {
+        dialog.error = '请粘贴 SVG 代码'
+        return
+      }
+      const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(code)}`
+      const size = await measure(src)
+      addCustomSvg(name, src, size.w, size.h)
+    } else {
+      const node = store.selectedNode
+      if (!node) {
+        dialog.error = '请先在画布中选中一个组件'
+        return
+      }
+      addCustomNode(name, JSON.parse(JSON.stringify(node)) as PMNode)
     }
-    addCustomSvg(name, pending.value.src, pending.value.w, pending.value.h)
-  } else if (dialog.tab === 'svg') {
-    const code = dialog.svgCode.trim()
-    if (!code) {
-      dialog.error = '请粘贴 SVG 代码'
-      return
-    }
-    const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(code)}`
-    const size = await measure(src)
-    addCustomSvg(name, src, size.w, size.h)
-  } else {
-    const node = store.selectedNode
-    if (!node) {
-      dialog.error = '请先在画布中选中一个组件'
-      return
-    }
-    addCustomNode(name, JSON.parse(JSON.stringify(node)) as PMNode)
+  } catch (error) {
+    dialog.error = error instanceof Error ? error.message : '保存失败'
+    return
   }
   closeDialog()
 }

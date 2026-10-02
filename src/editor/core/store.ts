@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import '@/editor/widgets'
 import { registry } from './registry'
 import {
+  countComments,
   createFrame,
   createId,
   createProject,
@@ -12,11 +12,28 @@ import {
   type Project,
   type Viewport
 } from './schema'
-import { cloneNode, findFrame, findNode, removeFromTree } from './tree'
+import {
+  absolutePosition,
+  cloneNode,
+  collectSubtreeIds,
+  findFrame,
+  findNode,
+  removeFromTree,
+  topLevelIds
+} from './tree'
 import { nextFramePosition } from './framePresets'
 import { buildCustomNode, findCustomWidget } from './customWidgets'
 
 const HISTORY_LIMIT = 100
+
+export type AlignMode = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom'
+export type DistributeAxis = 'horizontal' | 'vertical'
+
+interface SelectionTarget {
+  node: PMNode
+  offsetX: number
+  offsetY: number
+}
 
 function cloneProject(project: Project): Project {
   return JSON.parse(JSON.stringify(project)) as Project
@@ -26,22 +43,35 @@ export const useEditorStore = defineStore('editor', {
   state: () => ({
     project: createProject(),
     projectFileId: null as string | null,
-    selectedId: null as ID | null,
+    selectedIds: [] as ID[],
     activeFrameId: null as ID | null,
-    clipboard: null as PMNode | null,
+    clipboard: [] as PMNode[],
     past: [] as Project[],
     future: [] as Project[],
     dirty: false
   }),
 
   getters: {
+    selectedId(state): ID | null {
+      return state.selectedIds.length ? state.selectedIds[state.selectedIds.length - 1]! : null
+    },
     selectedNode(state): PMNode | null {
-      if (!state.selectedId) return null
-      return findNode(state.project.frames, state.selectedId)?.node ?? null
+      const id = state.selectedIds[state.selectedIds.length - 1]
+      return id ? findNode(state.project.frames, id)?.node ?? null : null
     },
     selectedLocation(state) {
-      if (!state.selectedId) return null
-      return findNode(state.project.frames, state.selectedId)
+      const id = state.selectedIds[state.selectedIds.length - 1]
+      return id ? findNode(state.project.frames, id) : null
+    },
+    selectedNodes(state): PMNode[] {
+      return state.selectedIds
+        .map((id) => findNode(state.project.frames, id)?.node)
+        .filter((node): node is PMNode => Boolean(node))
+    },
+    selectedRootNodes(state): PMNode[] {
+      return topLevelIds(state.project.frames, state.selectedIds)
+        .map((id) => findNode(state.project.frames, id)?.node)
+        .filter((node): node is PMNode => Boolean(node))
     },
     activeFrame(state): Frame | null {
       return state.activeFrameId ? findFrame(state.project.frames, state.activeFrameId) : null
@@ -53,11 +83,7 @@ export const useEditorStore = defineStore('editor', {
       return state.future.length > 0
     },
     commentCounts(state): Record<ID, number> {
-      const counts: Record<ID, number> = {}
-      for (const [nodeId, list] of Object.entries(state.project.annotations)) {
-        if (list.length) counts[nodeId] = list.length
-      }
-      return counts
+      return countComments(state.project.annotations)
     }
   },
 
@@ -67,9 +93,9 @@ export const useEditorStore = defineStore('editor', {
       this.projectFileId = fileId
       this.past = []
       this.future = []
-      this.selectedId = null
+      this.selectedIds = []
       this.activeFrameId = project.frames[0]?.id ?? null
-      this.clipboard = null
+      this.clipboard = []
       this.dirty = false
     },
 
@@ -104,20 +130,33 @@ export const useEditorStore = defineStore('editor', {
     },
 
     ensureSelection() {
-      if (this.selectedId && !findNode(this.project.frames, this.selectedId)) {
-        this.selectedId = null
-      }
+      this.selectedIds = this.selectedIds.filter((id) => findNode(this.project.frames, id))
       if (this.activeFrameId && !findFrame(this.project.frames, this.activeFrameId)) {
         this.activeFrameId = this.project.frames[0]?.id ?? null
       }
     },
 
     select(id: ID | null) {
-      this.selectedId = id
+      this.selectedIds = id ? [id] : []
       if (id) {
         const location = findNode(this.project.frames, id)
         if (location) this.activeFrameId = location.frame.id
       }
+    },
+
+    toggleSelect(id: ID) {
+      const has = this.selectedIds.includes(id)
+      this.selectedIds = has ? this.selectedIds.filter((item) => item !== id) : [...this.selectedIds, id]
+      if (!has) {
+        const location = findNode(this.project.frames, id)
+        if (location) this.activeFrameId = location.frame.id
+      }
+    },
+
+    selectMany(ids: ID[]) {
+      this.selectedIds = [...ids]
+      const location = ids.length ? findNode(this.project.frames, ids[0]!) : null
+      if (location) this.activeFrameId = location.frame.id
     },
 
     setViewport(viewport: Viewport) {
@@ -132,7 +171,7 @@ export const useEditorStore = defineStore('editor', {
       const frame = createFrame({ x, y, w: size.w, h: size.h })
       this.project.frames.push(frame)
       this.activeFrameId = frame.id
-      this.selectedId = null
+      this.selectedIds = []
       this.dirty = true
       return frame.id
     },
@@ -151,7 +190,7 @@ export const useEditorStore = defineStore('editor', {
       }
       this.project.frames.push(copy)
       this.activeFrameId = copy.id
-      this.selectedId = null
+      this.selectedIds = []
       this.dirty = true
       return copy.id
     },
@@ -217,16 +256,32 @@ export const useEditorStore = defineStore('editor', {
     },
 
     removeNode(id: ID) {
+      const location = findNode(this.project.frames, id)
+      if (!location) return
+      const removedIds = collectSubtreeIds(location.node)
       removeFromTree(this.project.frames, id)
-      delete this.project.annotations[id]
-      if (this.selectedId === id) this.selectedId = null
+      for (const removedId of removedIds) delete this.project.annotations[removedId]
+      const removed = new Set(removedIds)
+      this.selectedIds = this.selectedIds.filter((item) => !removed.has(item))
       this.dirty = true
     },
 
     removeSelected() {
-      const id = this.selectedId
-      if (!id) return
-      this.mutate(() => this.removeNode(id))
+      if (!this.selectedIds.length) return
+      this.mutate(() => {
+        for (const id of [...this.selectedIds]) this.removeNode(id)
+      })
+    },
+
+    insertNodeCopy(id: ID, dx = 0, dy = 0): ID | null {
+      const location = findNode(this.project.frames, id)
+      if (!location) return null
+      const copy = cloneNode(location.node, createId)
+      copy.x = location.node.x + dx
+      copy.y = location.node.y + dy
+      location.siblings.splice(location.index + 1, 0, copy)
+      this.dirty = true
+      return copy.id
     },
 
     moveNode(id: ID, x: number, y: number) {
@@ -298,27 +353,126 @@ export const useEditorStore = defineStore('editor', {
     },
 
     copySelected() {
-      const location = this.selectedLocation
-      if (location) this.clipboard = cloneNode(location.node, createId)
+      const frame = this.activeFrame
+      if (!frame) return
+      this.clipboard = this.selectedRootLocations(frame).map((location) => cloneNode(location.node, createId))
     },
 
     pasteClipboard() {
-      if (!this.clipboard || !this.activeFrameId) return
-      const copy = cloneNode(this.clipboard, createId)
-      copy.x += 16
-      copy.y += 16
-      this.mutate(() => this.addNode(this.activeFrameId!, copy))
-      this.select(copy.id)
+      if (!this.clipboard.length || !this.activeFrameId) return
+      const frameId = this.activeFrameId
+      const copies = this.clipboard.map((node) => {
+        const copy = cloneNode(node, createId)
+        copy.x += 16
+        copy.y += 16
+        return copy
+      })
+      this.mutate(() => {
+        for (const copy of copies) this.addNode(frameId, copy)
+      })
+      this.selectMany(copies.map((copy) => copy.id))
     },
 
     duplicateSelected() {
-      const location = this.selectedLocation
-      if (!location || !this.activeFrameId) return
-      const copy = cloneNode(location.node, createId)
-      copy.x += 16
-      copy.y += 16
-      this.mutate(() => this.addNode(location.frame.id, copy))
-      this.select(copy.id)
+      const frame = this.activeFrame
+      if (!frame) return
+      const locations = this.selectedRootLocations(frame)
+      if (!locations.length) return
+      const copies = locations.map((location) => {
+        const copy = cloneNode(location.node, createId)
+        copy.x += 16
+        copy.y += 16
+        return copy
+      })
+      this.mutate(() => {
+        for (const copy of copies) this.addNode(frame.id, copy)
+      })
+      this.selectMany(copies.map((copy) => copy.id))
+    },
+
+    selectedRootLocations(frame: Frame) {
+      return topLevelIds(this.project.frames, this.selectedIds)
+        .map((id) => findNode(this.project.frames, id))
+        .filter((location): location is NonNullable<typeof location> => Boolean(location) && location!.frame.id === frame.id)
+    },
+
+    selectionTargets(frame: Frame): SelectionTarget[] {
+      return this.selectedRootLocations(frame)
+        .map((location) => {
+          const abs = absolutePosition(frame, location.node.id) ?? { x: location.node.x, y: location.node.y }
+          return { node: location.node, offsetX: abs.x - location.node.x, offsetY: abs.y - location.node.y }
+        })
+    },
+
+    alignSelection(mode: AlignMode) {
+      const frame = this.activeFrame
+      if (!frame) return
+      const targets = this.selectionTargets(frame)
+      if (!targets.length) return
+      let ref: { x: number; y: number; w: number; h: number }
+      if (targets.length > 1) {
+        const rects = targets.map((target) => ({
+          x: target.offsetX + target.node.x,
+          y: target.offsetY + target.node.y,
+          w: target.node.w,
+          h: target.node.h
+        }))
+        const minX = Math.min(...rects.map((rect) => rect.x))
+        const minY = Math.min(...rects.map((rect) => rect.y))
+        const maxX = Math.max(...rects.map((rect) => rect.x + rect.w))
+        const maxY = Math.max(...rects.map((rect) => rect.y + rect.h))
+        ref = { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+      } else {
+        ref = { x: 0, y: 0, w: frame.w, h: frame.h }
+      }
+      this.pushHistory()
+      for (const target of targets) {
+        const { node, offsetX, offsetY } = target
+        const absX = offsetX + node.x
+        const absY = offsetY + node.y
+        let nextX = absX
+        let nextY = absY
+        if (mode === 'left') nextX = ref.x
+        else if (mode === 'hcenter') nextX = ref.x + (ref.w - node.w) / 2
+        else if (mode === 'right') nextX = ref.x + ref.w - node.w
+        else if (mode === 'top') nextY = ref.y
+        else if (mode === 'vcenter') nextY = ref.y + (ref.h - node.h) / 2
+        else if (mode === 'bottom') nextY = ref.y + ref.h - node.h
+        node.x = Math.round(nextX - offsetX)
+        node.y = Math.round(nextY - offsetY)
+      }
+      this.dirty = true
+    },
+
+    distributeSelection(axis: DistributeAxis) {
+      const frame = this.activeFrame
+      if (!frame) return
+      const targets = this.selectionTargets(frame)
+      if (targets.length < 3) return
+      const measured = targets.map((target) => {
+        const absX = target.offsetX + target.node.x
+        const absY = target.offsetY + target.node.y
+        return {
+          target,
+          start: axis === 'horizontal' ? absX : absY,
+          size: axis === 'horizontal' ? target.node.w : target.node.h
+        }
+      })
+      measured.sort((a, b) => a.start - b.start)
+      const first = measured[0]!
+      const last = measured[measured.length - 1]!
+      const spanStart = first.start
+      const spanEnd = last.start + last.size
+      const totalSize = measured.reduce((sum, item) => sum + item.size, 0)
+      const gap = (spanEnd - spanStart - totalSize) / (measured.length - 1)
+      this.pushHistory()
+      let cursor = spanStart
+      for (const item of measured) {
+        if (axis === 'horizontal') item.target.node.x = Math.round(cursor - item.target.offsetX)
+        else item.target.node.y = Math.round(cursor - item.target.offsetY)
+        cursor += item.size + gap
+      }
+      this.dirty = true
     },
 
     updateNodeSize(id: ID, w: number, h: number) {
