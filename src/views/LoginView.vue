@@ -11,6 +11,8 @@ const password = ref('')
 const error = ref('')
 const loading = ref(false)
 
+const logoUrl = `${import.meta.env.BASE_URL}logo.svg`
+
 async function submit() {
   error.value = ''
   loading.value = true
@@ -29,6 +31,7 @@ async function submit() {
 <template>
   <div class="auth-page">
     <form class="auth-card" @submit.prevent="submit">
+      <img class="auth-logo" :src="logoUrl" alt="PM Canvas" />
       <h1>PM Canvas</h1>
       <p class="auth-subtitle">无限画布原型工具</p>
 

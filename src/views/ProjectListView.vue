@@ -8,6 +8,7 @@ import { createProject, serializeProject } from '@/editor/core/schema'
 import type { ProjectRecord } from '@/api/types'
 import IconGlyph from '@/editor/components/IconGlyph.vue'
 
+const logoUrl = `${import.meta.env.BASE_URL}logo.svg`
 const router = useRouter()
 const projects = ref<ProjectRecord[]>([])
 const keyword = ref('')
@@ -76,7 +77,7 @@ function formatTime(value?: string): string {
   <div class="project-page">
     <header class="project-header">
       <div class="project-header__brand">
-        <icon-glyph name="tabler:vector-triangle" size="22px" />
+        <img class="brand-logo" :src="logoUrl" alt="PM Canvas" />
         <h1>PM Canvas</h1>
       </div>
       <div class="project-header__actions">

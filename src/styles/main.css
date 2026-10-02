@@ -93,6 +93,13 @@ textarea {
   gap: 14px;
 }
 
+.auth-logo {
+  width: 56px;
+  height: 56px;
+  display: block;
+  align-self: center;
+}
+
 .auth-card h1 {
   margin: 0;
   font-size: 22px;
@@ -164,6 +171,12 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.brand-logo {
+  width: 26px;
+  height: 26px;
+  display: block;
 }
 
 .project-header__brand h1 {
