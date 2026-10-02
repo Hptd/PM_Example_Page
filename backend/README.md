@@ -13,7 +13,8 @@ backend/
 │     └─ resources/mapper/pm/PmProjectMapper.xml
 ├─ ruoyi-ui-src/             需复制进若依管理端的文件
 │  ├─ api/pm/project.js
-│  └─ views/pm/project/index.vue
+│  ├─ views/pm/project/index.vue
+│  └─ views/index.vue        管理端首页（前端功能说明，替换若依默认首页）
 └─ sql/pm_init.sql           业务表 + 菜单 + 角色 + 默认账号
 ```
 
@@ -46,6 +47,7 @@ backend/
 6. 复制管理端页面：
    - `ruoyi-ui-src/api/pm/project.js` → `ruoyi-ui/src/api/pm/project.js`
    - `ruoyi-ui-src/views/pm/project/index.vue` → `ruoyi-ui/src/views/pm/project/index.vue`
+   - `ruoyi-ui-src/views/index.vue` → `ruoyi-ui/src/views/index.vue`（替换若依默认首页，展示前端功能说明）
 7. 配置 `ruoyi-admin/src/main/resources/application-druid.yml` 数据源与 Redis。
 8. 关闭图形验证码（前后端均不需要）：
    ```sql

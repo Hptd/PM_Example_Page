@@ -11,3 +11,6 @@ backend/**/target/
 backend/**/*.class
 
 main-files
+DESIGN.MD
+
+backend/dump.rdb
