@@ -8,6 +8,7 @@ import { FRAME_SIZE_GROUPS, nextFramePosition, pickDefaultFrameSize } from '@/ed
 import { findCustomWidget } from '@/editor/core/customWidgets'
 import { findFrame } from '@/editor/core/tree'
 import { getProject, saveProject } from '@/api/project'
+import { ApiError } from '@/api/http'
 import { useAutosave } from '@/composables/useAutosave'
 import { useEditorShortcuts } from '@/composables/useEditorShortcuts'
 import { measureSvg, readPastedSvg, svgToDataUrl } from '@/editor/core/pasteSvg'
@@ -75,6 +76,7 @@ onMounted(async () => {
     const record = await getProject(projectId)
     store.loadProject(record.content ? parseProject(record.content) : createProject(record.name), projectId)
   } catch (error) {
+    if (error instanceof ApiError && error.code === 401) return
     window.alert(error instanceof Error ? error.message : '项目加载失败')
     await router.replace('/')
     return

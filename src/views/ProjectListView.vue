@@ -73,10 +73,7 @@ async function submitPassword() {
     await logout()
     await router.replace('/login')
   } catch (err) {
-    if (err instanceof ApiError && err.code === 401) {
-      await router.replace('/login')
-      return
-    }
+    if (err instanceof ApiError && err.code === 401) return
     pwdError.value = err instanceof Error ? err.message : '修改密码失败'
   } finally {
     pwdSubmitting.value = false
@@ -89,6 +86,7 @@ async function refresh() {
   try {
     projects.value = (await listProjects(keyword.value)).rows
   } catch (err) {
+    if (err instanceof ApiError && err.code === 401) return
     projects.value = []
     error.value = err instanceof Error ? err.message : '项目列表加载失败'
   } finally {
@@ -107,6 +105,7 @@ async function create() {
     newName.value = ''
     await refresh()
   } catch (err) {
+    if (err instanceof ApiError && err.code === 401) return
     error.value = err instanceof Error ? err.message : '创建失败'
   }
 }
@@ -121,6 +120,7 @@ async function remove(record: ProjectRecord) {
     await deleteProject(record.id)
     await refresh()
   } catch (err) {
+    if (err instanceof ApiError && err.code === 401) return
     error.value = err instanceof Error ? err.message : '删除失败'
   }
 }

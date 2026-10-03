@@ -378,6 +378,39 @@ textarea {
   padding: 6px 14px;
 }
 
+/* ---------- 登录失效阻塞提示 ---------- */
+.session-expired-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 6000;
+}
+
+.session-expired-dialog {
+  width: 320px;
+  align-items: center;
+  text-align: center;
+}
+
+.session-expired-dialog__text {
+  margin: 0;
+  color: var(--pm-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.session-expired-dialog .dialog__actions {
+  width: 100%;
+}
+
+.session-expired-dialog .dialog__actions .btn-primary {
+  flex: 1;
+  padding: 8px 14px;
+}
+
 /* ---------- 图标选择器 ---------- */
 .icon-picker {
   width: 620px;

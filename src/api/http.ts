@@ -1,9 +1,13 @@
+import { ref } from 'vue'
+
 export const TOKEN_KEY = 'pm_token'
 export const USER_KEY = 'pm_user'
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/dev-api'
 
 export const USE_LOCAL = (import.meta.env.VITE_USE_LOCAL as string | undefined) !== 'false'
+
+export const sessionExpired = ref(false)
 
 export class ApiError extends Error {
   code: number
@@ -26,6 +30,11 @@ export function setToken(token: string): void {
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(USER_KEY)
+}
+
+function handleUnauthorized(): void {
+  clearToken()
+  sessionExpired.value = true
 }
 
 export function getStoredUser(): string {
@@ -72,7 +81,7 @@ export async function http<T>(options: HttpOptions): Promise<T> {
   }
 
   if (response.status === 401) {
-    clearToken()
+    if (options.auth !== false) handleUnauthorized()
     throw new ApiError(401, '登录状态已失效，请重新登录')
   }
 
@@ -87,6 +96,10 @@ export async function http<T>(options: HttpOptions): Promise<T> {
   }
 
   const code = typeof payload.code === 'number' ? payload.code : undefined
+  if (code === 401 && options.auth !== false) {
+    handleUnauthorized()
+    throw new ApiError(401, '登录状态已失效，请重新登录')
+  }
   if (code !== undefined && code !== 200) {
     throw new ApiError(code, typeof payload.msg === 'string' ? payload.msg : '请求失败')
   }
