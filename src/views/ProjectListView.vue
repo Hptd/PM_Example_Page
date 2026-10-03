@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { deleteProject, listProjects, saveProject } from '@/api/project'
-import { logout } from '@/api/auth'
-import { getStoredUser } from '@/api/http'
+import { changePassword, logout } from '@/api/auth'
+import { ApiError, getStoredUser } from '@/api/http'
 import { createProject, serializeProject } from '@/editor/core/schema'
 import type { ProjectRecord } from '@/api/types'
 import IconGlyph from '@/editor/components/IconGlyph.vue'
@@ -16,7 +16,72 @@ const loading = ref(false)
 const error = ref('')
 const showDialog = ref(false)
 const newName = ref('')
-const userName = computed(() => getStoredUser() || 'wangzhe')
+const userName = computed(() => getStoredUser() || '用户')
+const userMenu = ref(false)
+const showPwdDialog = ref(false)
+const oldPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const pwdError = ref('')
+const pwdSubmitting = ref(false)
+
+function toggleUserMenu() {
+  userMenu.value = !userMenu.value
+}
+
+function closeUserMenu() {
+  userMenu.value = false
+}
+
+onMounted(() => window.addEventListener('click', closeUserMenu))
+onBeforeUnmount(() => window.removeEventListener('click', closeUserMenu))
+
+function openPwdDialog() {
+  userMenu.value = false
+  oldPassword.value = ''
+  newPassword.value = ''
+  confirmPassword.value = ''
+  pwdError.value = ''
+  showPwdDialog.value = true
+}
+
+function closePwdDialog() {
+  if (pwdSubmitting.value) return
+  showPwdDialog.value = false
+}
+
+function validatePassword(): string {
+  if (!oldPassword.value) return '请输入旧密码'
+  if (!newPassword.value) return '请输入新密码'
+  if (newPassword.value.length < 6 || newPassword.value.length > 20) return '新密码长度必须在6到20个字符之间'
+  if (/["'<>\\|]/.test(newPassword.value)) return '新密码不能包含非法字符'
+  if (newPassword.value !== confirmPassword.value) return '两次输入的新密码不一致'
+  return ''
+}
+
+async function submitPassword() {
+  const message = validatePassword()
+  if (message) {
+    pwdError.value = message
+    return
+  }
+  pwdSubmitting.value = true
+  pwdError.value = ''
+  try {
+    await changePassword(oldPassword.value, newPassword.value)
+    window.alert('密码修改成功，请重新登录')
+    await logout()
+    await router.replace('/login')
+  } catch (err) {
+    if (err instanceof ApiError && err.code === 401) {
+      await router.replace('/login')
+      return
+    }
+    pwdError.value = err instanceof Error ? err.message : '修改密码失败'
+  } finally {
+    pwdSubmitting.value = false
+  }
+}
 
 async function refresh() {
   loading.value = true
@@ -61,6 +126,7 @@ async function remove(record: ProjectRecord) {
 }
 
 async function doLogout() {
+  userMenu.value = false
   try {
     await logout()
   } finally {
@@ -81,8 +147,15 @@ function formatTime(value?: string): string {
         <h1>PM Canvas</h1>
       </div>
       <div class="project-header__actions">
-        <span class="project-user">{{ userName }}</span>
-        <button @click="doLogout">退出</button>
+        <div class="user-menu">
+          <button class="project-user" :class="{ active: userMenu }" @click.stop="toggleUserMenu">
+            {{ userName }} ▾
+          </button>
+          <div v-if="userMenu" class="user-menu__dropdown" @click.stop>
+            <button class="user-menu__item" @click="openPwdDialog">修改密码</button>
+            <button class="user-menu__item" @click="doLogout">退出</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -123,6 +196,31 @@ function formatTime(value?: string): string {
           <button class="btn-primary" :disabled="!newName.trim()" @click="create">创建</button>
         </div>
       </div>
+    </div>
+
+    <div v-if="showPwdDialog" class="modal-mask" @click.self="closePwdDialog">
+      <form class="dialog" @submit.prevent="submitPassword">
+        <h3>修改密码</h3>
+        <label class="auth-field">
+          <span>旧密码</span>
+          <input v-model="oldPassword" type="password" autocomplete="current-password" placeholder="请输入旧密码" />
+        </label>
+        <label class="auth-field">
+          <span>新密码</span>
+          <input v-model="newPassword" type="password" autocomplete="new-password" placeholder="6~20 个字符" />
+        </label>
+        <label class="auth-field">
+          <span>确认新密码</span>
+          <input v-model="confirmPassword" type="password" autocomplete="new-password" placeholder="请再次输入新密码" />
+        </label>
+        <p v-if="pwdError" class="auth-error">{{ pwdError }}</p>
+        <div class="dialog__actions">
+          <button type="button" :disabled="pwdSubmitting" @click="closePwdDialog">取消</button>
+          <button class="btn-primary" type="submit" :disabled="pwdSubmitting">
+            {{ pwdSubmitting ? '提交中...' : '提交' }}
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </template>

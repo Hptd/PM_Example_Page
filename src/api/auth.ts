@@ -19,6 +19,15 @@ export async function login(username: string, password: string): Promise<void> {
   setStoredUser(username)
 }
 
+export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  if (USE_LOCAL) throw new Error('本地模式不支持修改密码')
+  await http({
+    method: 'PUT',
+    url: '/pm/user/updatePwd',
+    body: { oldPassword, newPassword }
+  })
+}
+
 export async function logout(): Promise<void> {
   if (!USE_LOCAL) {
     try {
