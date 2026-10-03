@@ -10,6 +10,7 @@ import { findFrame } from '@/editor/core/tree'
 import { getProject, saveProject } from '@/api/project'
 import { useAutosave } from '@/composables/useAutosave'
 import { useEditorShortcuts } from '@/composables/useEditorShortcuts'
+import { measureSvg, readPastedSvg, svgToDataUrl } from '@/editor/core/pasteSvg'
 import PalettePanel from '@/editor/panels/PalettePanel.vue'
 import PropertiesPanel from '@/editor/panels/PropertiesPanel.vue'
 import LayersPanel from '@/editor/panels/LayersPanel.vue'
@@ -51,6 +52,24 @@ function save(): Promise<boolean> {
 
 const { onKeydown } = useEditorShortcuts(store, () => void save())
 
+async function onPaste(event: ClipboardEvent) {
+  const target = event.target as HTMLElement | null
+  if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) return
+
+  const svg = await readPastedSvg(event.clipboardData)
+  if (svg) {
+    event.preventDefault()
+    const size = await measureSvg(svg)
+    store.pasteSvg(svgToDataUrl(svg), size.w, size.h)
+    return
+  }
+
+  if (store.clipboard.length) {
+    event.preventDefault()
+    store.pasteClipboard()
+  }
+}
+
 onMounted(async () => {
   try {
     const record = await getProject(projectId)
@@ -62,11 +81,13 @@ onMounted(async () => {
   }
   loading.value = false
   window.addEventListener('keydown', onKeydown)
+  window.addEventListener('paste', onPaste)
   window.addEventListener('click', closeMenu)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('paste', onPaste)
   window.removeEventListener('click', closeMenu)
   if (store.dirty) void save()
 })

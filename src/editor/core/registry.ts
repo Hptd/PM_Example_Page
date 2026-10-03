@@ -20,6 +20,7 @@ export type WidgetCategory = 'basic' | 'form' | 'data' | 'nav' | 'custom'
 export interface TextEditorDef {
   key: string
   multiline?: boolean
+  align?: 'left' | 'center'
 }
 
 export interface WidgetDef {

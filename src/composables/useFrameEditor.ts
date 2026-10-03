@@ -1,7 +1,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, type CSSProperties, type Ref } from 'vue'
 import type { Frame, PMNode } from '@/editor/core/schema'
 import { useEditorStore } from '@/editor/core/store'
-import { registry } from '@/editor/core/registry'
+import { registry, type WidgetDef } from '@/editor/core/registry'
 import { hitTest } from '@/editor/core/hitTest'
 import { absolutePosition, findNode } from '@/editor/core/tree'
 import {
@@ -150,7 +150,10 @@ export function useFrameEditor(
     }
 
     const node = hitTest(props.frame.tree, point)
-    if (!node) return
+    if (!node) {
+      store.activeFrameId = props.frame.id
+      return
+    }
 
     if (event.ctrlKey || event.metaKey) {
       store.toggleSelect(node.id)
@@ -282,6 +285,18 @@ export function useFrameEditor(
     return true
   }
 
+  function textStyle(node: PMNode, def: WidgetDef): Pick<EditingState, 'fontSize' | 'textAlign' | 'color'> {
+    const pick = (key: string, fallback: string) => {
+      const value = node.style?.[key] ?? def.defaultStyle[key]
+      return value === undefined ? fallback : String(value)
+    }
+    return {
+      fontSize: pick('fontSize', '14px'),
+      textAlign: def.textEditor?.align ?? pick('textAlign', 'left'),
+      color: pick('color', '#1f2937')
+    }
+  }
+
   function onDblClick(event: MouseEvent) {
     if (onClickedEditTarget(event)) return
 
@@ -299,9 +314,7 @@ export function useFrameEditor(
       y: position.y,
       w: node.w,
       h: node.h,
-      fontSize: node.style?.fontSize !== undefined ? String(node.style.fontSize) : '14px',
-      textAlign: node.style?.textAlign !== undefined ? String(node.style.textAlign) : 'left',
-      color: node.style?.color !== undefined ? String(node.style.color) : '#1f2937'
+      ...textStyle(node, def)
     })
   }
 

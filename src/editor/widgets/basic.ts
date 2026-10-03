@@ -1,7 +1,38 @@
 import { h } from 'vue'
 import type { WidgetDef } from '@/editor/core/registry'
-import { baseStyle, box, num, str } from './helpers'
+import { SVG_DEFAULT_SIZE } from '@/editor/core/pasteSvg'
+import {
+  analyzeSvgColors,
+  applyColorMap,
+  decodeSvgDataUrl,
+  fitSvgRoot,
+  namespaceSvgIds,
+  normalizeColor,
+  sanitizeSvg,
+  setRootFill,
+  toColorMap
+} from '@/editor/core/svgColor'
+import { baseStyle, box, num, str, type StyleMap } from './helpers'
 import { renderIcon } from './icons'
+
+const centeredFlex: StyleMap = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center'
+}
+
+const textFlow: StyleMap = {
+  overflow: 'hidden',
+  whiteSpace: 'pre-wrap'
+}
+
+const centeredText: StyleMap = {
+  ...centeredFlex,
+  textAlign: 'center',
+  padding: '0 6px',
+  ...textFlow,
+  wordBreak: 'break-word'
+}
 
 export const basicWidgets: WidgetDef[] = [
   {
@@ -11,10 +42,11 @@ export const basicWidgets: WidgetDef[] = [
     icon: 'tabler:rectangle',
     order: 1,
     defaultSize: { w: 160, h: 100 },
-    defaultProps: {},
+    defaultProps: { text: '' },
     defaultStyle: { background: '#e2e8f0', border: '1px solid #94a3b8', borderRadius: '0px' },
-    propSchema: [],
-    render: (node, _children) => box(node, [])
+    textEditor: { key: 'text', multiline: true, align: 'center' },
+    propSchema: [{ key: 'text', label: '文字', type: 'textarea' }],
+    render: (node) => box(node, str(node.props.text, ''), centeredText)
   },
   {
     type: 'pm-ellipse',
@@ -23,10 +55,11 @@ export const basicWidgets: WidgetDef[] = [
     icon: 'tabler:circle',
     order: 2,
     defaultSize: { w: 120, h: 120 },
-    defaultProps: {},
+    defaultProps: { text: '' },
     defaultStyle: { background: '#e2e8f0', border: '1px solid #94a3b8', borderRadius: '50%' },
-    propSchema: [],
-    render: (node, _children) => box(node, [])
+    textEditor: { key: 'text', multiline: true, align: 'center' },
+    propSchema: [{ key: 'text', label: '文字', type: 'textarea' }],
+    render: (node) => box(node, str(node.props.text, ''), centeredText)
   },
   {
     type: 'pm-line',
@@ -56,7 +89,7 @@ export const basicWidgets: WidgetDef[] = [
       const thickness = num(node.props.thickness, 2)
       return h(
         'div',
-        { style: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+        { style: { width: '100%', height: '100%', ...centeredFlex } },
         [
           h('div', {
             style: horizontal
@@ -86,11 +119,10 @@ export const basicWidgets: WidgetDef[] = [
     propSchema: [{ key: 'content', label: '内容', type: 'textarea' }],
     render: (node) =>
       box(node, str(node.props.content, ''), {
-        display: 'flex',
-        alignItems: 'center',
+        ...centeredFlex,
+        justifyContent: 'flex-start',
         padding: '0 2px',
-        overflow: 'hidden',
-        whiteSpace: 'pre-wrap'
+        ...textFlow
       })
   },
   {
@@ -172,7 +204,7 @@ export const basicWidgets: WidgetDef[] = [
     },
     textEditor: { key: 'label' },
     propSchema: [{ key: 'label', label: '文字', type: 'text' }],
-    render: (node) => box(node, str(node.props.label, '按钮'), { display: 'flex', alignItems: 'center', justifyContent: 'center' })
+    render: (node) => box(node, str(node.props.label, '按钮'), centeredFlex)
   },
   {
     type: 'pm-container',
@@ -193,21 +225,51 @@ export const basicWidgets: WidgetDef[] = [
     category: 'custom',
     icon: 'tabler:box',
     order: 0,
-    defaultSize: { w: 120, h: 120 },
+    defaultSize: { w: SVG_DEFAULT_SIZE, h: SVG_DEFAULT_SIZE },
     defaultProps: { name: '', svg: '' },
     defaultStyle: { background: 'transparent' },
     propSchema: [{ key: 'name', label: '名称', type: 'text' }],
     render: (node) => {
       const svg = str(node.props.svg)
-      if (svg) {
-        return h('img', { src: svg, alt: str(node.props.name, ''), draggable: false, style: baseStyle(node, { objectFit: 'contain', display: 'block' }) })
+      if (!svg) {
+        return box(node, str(node.props.name, '自定义组件'), {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#94a3b8',
+          fontSize: '12px'
+        })
       }
-      return box(node, str(node.props.name, '自定义组件'), {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#94a3b8',
-        fontSize: '12px'
+      const decoded = decodeSvgDataUrl(svg)
+      if (decoded?.kind !== 'svg') {
+        return h('img', {
+          src: svg,
+          alt: str(node.props.name, ''),
+          draggable: false,
+          style: baseStyle(node, { objectFit: 'contain', display: 'block' })
+        })
+      }
+      const analysis = analyzeSvgColors(decoded.source)
+      let markup = namespaceSvgIds(sanitizeSvg(decoded.source), node.id)
+      let tint = ''
+      if (analysis.mode === 'mono') {
+        const color = str(node.props.iconColor)
+        if (color) {
+          tint = color
+          markup =
+            analysis.colors.length === 1
+              ? applyColorMap(markup, new Map([[normalizeColor(analysis.colors[0]!), color]]))
+              : setRootFill(markup, color)
+        }
+      } else if (analysis.mode === 'multi') {
+        const map = toColorMap(node.props.colorMap)
+        if (map.size) markup = applyColorMap(markup, map)
+      }
+      const svgStyle: StyleMap = { display: 'block', lineHeight: 0 }
+      if (tint) svgStyle.color = tint
+      return h('div', {
+        style: baseStyle(node, svgStyle),
+        innerHTML: fitSvgRoot(markup)
       })
     }
   }

@@ -1016,6 +1016,59 @@ textarea.field__control {
   color: var(--pm-muted);
 }
 
+/* ---------- 图标颜色 ---------- */
+.icon-colors {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.icon-color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-color-swatch {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  border: 1px solid var(--pm-border);
+}
+
+.icon-color-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--pm-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-color-row .field__control--color {
+  width: 40px;
+  flex: 0 0 auto;
+}
+
+.icon-color-bulk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.icon-color-bulk .field__control--color {
+  width: 40px;
+  flex: 0 0 auto;
+}
+
+.icon-color-reset {
+  margin-top: 10px;
+  width: 100%;
+}
+
 /* ---------- 图层面板 ---------- */
 .layers-frame {
   margin-bottom: 10px;

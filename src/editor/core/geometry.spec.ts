@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clampZoom, resizeRect, screenToWorld, snapRect, worldToScreen } from './geometry'
+import { clampZoom, fitSize, resizeRect, screenToWorld, snapRect, worldToScreen } from './geometry'
 
 describe('geometry', () => {
   it('converts between screen and world coordinates', () => {
@@ -12,6 +12,12 @@ describe('geometry', () => {
   it('clamps zoom into range', () => {
     expect(clampZoom(0.01)).toBe(0.1)
     expect(clampZoom(10)).toBe(4)
+  })
+
+  it('fits a size inside bounds without upscaling', () => {
+    expect(fitSize({ w: 48, h: 24 }, 1280, 800)).toEqual({ w: 48, h: 24 })
+    expect(fitSize({ w: 2560, h: 1600 }, 1280, 800)).toEqual({ w: 1280, h: 800 })
+    expect(fitSize({ w: 4000, h: 1000 }, 1280, 800)).toEqual({ w: 1280, h: 320 })
   })
 
   it('resizes from edges', () => {

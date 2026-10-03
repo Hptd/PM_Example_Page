@@ -22,6 +22,7 @@ import {
   topLevelIds
 } from './tree'
 import { nextFramePosition } from './framePresets'
+import { fitSize } from './geometry'
 import { buildCustomNode, findCustomWidget } from './customWidgets'
 
 const HISTORY_LIMIT = 100
@@ -225,9 +226,7 @@ export const useEditorStore = defineStore('editor', {
         style: { ...def.defaultStyle }
       }
       if (def.droppable) node.children = []
-      this.addNode(frameId, node, parentId)
-      this.select(node.id)
-      this.dirty = true
+      this.addNodeAndSelect(frameId, node, parentId)
       return node.id
     },
 
@@ -235,9 +234,7 @@ export const useEditorStore = defineStore('editor', {
       const widget = findCustomWidget(customId)
       if (!widget) return null
       const id = createId('n')
-      this.addNode(frameId, buildCustomNode(widget, id, x, y), parentId)
-      this.select(id)
-      this.dirty = true
+      this.addNodeAndSelect(frameId, buildCustomNode(widget, id, x, y), parentId)
       return id
     },
 
@@ -253,6 +250,12 @@ export const useEditorStore = defineStore('editor', {
         }
       }
       frame.tree.push(node)
+    },
+
+    addNodeAndSelect(frameId: ID, node: PMNode, parentId: ID | null = null) {
+      this.addNode(frameId, node, parentId)
+      this.select(node.id)
+      this.dirty = true
     },
 
     removeNode(id: ID) {
@@ -371,6 +374,32 @@ export const useEditorStore = defineStore('editor', {
         for (const copy of copies) this.addNode(frameId, copy)
       })
       this.selectMany(copies.map((copy) => copy.id))
+    },
+
+    pasteSvg(svg: string, w: number, h: number): ID | null {
+      this.pushHistory()
+      let frame = this.activeFrame
+      if (!frame) {
+        const position = nextFramePosition(this.project.frames)
+        this.addFrame(position.x, position.y)
+        frame = this.activeFrame
+      }
+      if (!frame) return null
+      const def = registry.get('pm-custom')
+      if (!def) return null
+      const size = fitSize({ w, h }, frame.w, frame.h)
+      const node: PMNode = {
+        id: createId('n'),
+        type: def.type,
+        x: Math.max(0, Math.round((frame.w - size.w) / 2)),
+        y: Math.max(0, Math.round((frame.h - size.h) / 2)),
+        w: size.w,
+        h: size.h,
+        props: { ...def.defaultProps, name: 'SVG 图标', svg },
+        style: { ...def.defaultStyle }
+      }
+      this.addNodeAndSelect(frame.id, node)
+      return node.id
     },
 
     duplicateSelected() {

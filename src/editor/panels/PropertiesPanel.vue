@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useEditorStore, type AlignMode } from '@/editor/core/store'
 import { registry, type PropField as PropFieldDef } from '@/editor/core/registry'
 import PropField from '@/editor/components/PropField.vue'
+import IconColorControl from '@/editor/panels/IconColorControl.vue'
 
 const store = useEditorStore()
 
@@ -157,6 +158,11 @@ function onAlign(mode: AlignMode) {
           :value="node.style[field.key]"
           @update="commitStyle(field.key, $event as string | number)"
         />
+      </section>
+
+      <section v-if="node.type === 'pm-custom'" class="prop-section">
+        <h4>图标颜色</h4>
+        <icon-color-control :node="node" />
       </section>
 
       <section v-if="def && def.propSchema.length" class="prop-section">

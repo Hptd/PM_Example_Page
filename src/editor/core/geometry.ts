@@ -34,6 +34,13 @@ export function clampZoom(zoom: number): number {
   return Math.min(4, Math.max(0.1, zoom))
 }
 
+export function fitSize(size: { w: number; h: number }, maxW: number, maxH: number): { w: number; h: number } {
+  const w = Math.max(1, Math.round(size.w))
+  const h = Math.max(1, Math.round(size.h))
+  const scale = Math.min(1, maxW / w, maxH / h)
+  return { w: Math.max(1, Math.round(w * scale)), h: Math.max(1, Math.round(h * scale)) }
+}
+
 export interface SnapResult {
   x: number
   y: number

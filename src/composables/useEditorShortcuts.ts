@@ -84,10 +84,6 @@ export function useEditorShortcuts(store: EditorStore, save: () => void) {
       store.copySelected()
       return
     }
-    if (mod && key === 'v') {
-      store.pasteClipboard()
-      return
-    }
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault()
       store.removeSelected()
